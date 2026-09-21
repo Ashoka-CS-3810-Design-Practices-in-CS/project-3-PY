@@ -9,7 +9,7 @@ Department of Computer Science, Ashoka University.
 
 > **Status:** implementation not yet started. The repository currently contains the project
 > scaffolding documents only. The design and analysis are complete and are recorded in the
-> Assignment 1 design document (see [Related documents](#related-documents)).
+> separately submitted Assignment 1 design document.
 
 ---
 
@@ -29,7 +29,6 @@ Department of Computer Science, Ashoka University.
 - [Keyboard shortcuts](#keyboard-shortcuts)
 - [Planned project layout](#planned-project-layout)
 - [Team](#team)
-- [Related documents](#related-documents)
 
 ---
 
@@ -311,20 +310,7 @@ project-3-PY/
 
 | Name | Roll number |
 | --- | --- |
-| *TBD* | *TBD* |
-| *TBD* | *TBD* |
+| Papaa Dennis Morindat | 1020241748 |
+| Yididiya Megenta | 1020241852 |
 
-**Team name:** *TBD*
-
-## Related documents
-
-- `Assignment 1.pdf` — the assignment brief (CS-3810, Department of Computer Science, Ashoka
-  University). Project 3 is specified in §5.3.
-- The Assignment 1 design and analysis document, submitted separately as
-  `A1_<team_name>.pdf`. It contains the full requirements analysis, the architecture
-  rationale, the algorithm analysis, and the appendices referenced above.
-
-## Academic integrity
-
-This repository contains coursework submitted for CS-3810 at Ashoka University. Please do
-not copy it for your own submissions.
+**Team name:** PY
