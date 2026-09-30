@@ -7,10 +7,11 @@ synchronised pseudocode, live auxiliary state, and complexity information.
 Built for **CS-3810: Design Practices in Computer Science**, Assignments 1 and 2 / Project 3,
 Department of Computer Science, Ashoka University.
 
-> **Status:** implementation not yet started. The repository currently holds this README, the
-> assignment resources, and the engineering setup guide. The guide for scaffolding the app —
-> Vite, Tailwind, D3 submodules, TypeScript strict mode, the lint boundary rule and CI — is
-> [`ProjectResources/SETUP.md`](ProjectResources/SETUP.md).
+> **Status:** scaffold in place, feature implementation not yet started. The repository holds this
+> README, the assignment resources, the engineering setup guide, and the Vite + React + TypeScript
+> scaffold it describes — Tailwind v4, the D3 submodules, TypeScript strict mode, the Vitest
+> suites, the import-boundary lint rule and CI. The setup guide, including the rationale for each
+> choice, is [`ProjectResources/SETUP.md`](ProjectResources/SETUP.md).
 
 > **Design authority.** The design and analysis live in the Assignment 1 and Assignment 2
 > documents under [`ProjectResources/`](ProjectResources). Where this README and those
@@ -127,29 +128,35 @@ happening now?"* emits one step. A step is an immutable, fully serialisable reco
 ```ts
 type Step = {
   index:     number;                 // position in the trace, 0-based
-  operation: string;                 // "insert" | "extract-min" | "inorder" | "bfs" | ...
+  operation: string;                 // matches OperationMeta.id
   codeLine: number;                  // line of the operation's pseudocode executing
   narration: string;                 // one plain-English sentence for this step
-  highlight: { nodes: string[]; active?: string; edges: string[] };
+  highlight: { nodes: NodeId[]; active?: NodeId; edges: TraceEdge[] };
   delta:     StructureDelta;         // created / linked / unlinked / updated
-  aux:       AuxState;               // array | stack | queue | heap | visited | recursion
+  aux?:      AuxState;               // absent when there is no auxiliary container
 };
 
 type StructureDelta = {
-  created?: Node[];                  // ids and values of new nodes
-  linked?:   Edge[];                 // parent/child, next, or heap index edits
-  unlinked?: Edge[];
-  updated?: { id: string; from: unknown; to: unknown }[];
+  created?:  TraceNode[];            // ids and values of new nodes
+  linked?:   TraceEdge[];            // parent/child, next, or heap index edits
+  unlinked?: TraceEdge[];
+  updated?:  { id: NodeId; from: unknown; to: unknown }[];   // node values and @fields
 };
 
 type AuxState = {
   kind: "array" | "stack" | "queue" | "heap" | "visited" | "recursion";
   values?: (string | number)[];
-  visited?: string[];
+  visited?: NodeId[];
   frames?: number[];                 // recursion depth per frame
   comparisons?: number;              // running model charge
 };
 ```
+
+> **Frozen (v1).** Two rules settled at freeze time: a structure *pointer* is a reserved
+> field id beginning with `@` (`@head` today), so it can never be confused with a node id;
+> and `aux` is optional, because a linked-list insert has no auxiliary container at all.
+> Changing this shape is now a deliberate, visible event — see
+> [`ProjectResources/ADR-8-step-contract-freeze.md`](ProjectResources/ADR-8-step-contract-freeze.md).
 
 Because a step is immutable and self-describing, the three synchronised views are all pure
 functions of the same value:

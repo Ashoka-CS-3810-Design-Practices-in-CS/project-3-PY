@@ -1,0 +1,64 @@
+@import 'tailwindcss';
+
+/*
+ * One design-token palette (NFR-U2), taken from the active Omarchy theme
+ * (`Lavender` — a Catppuccin-Mocha-style palette).
+ *
+ * The names are semantic, not colour names, so a colour can be re-pointed in this
+ * one block and no component has to "know" that an accent is lavender. Components
+ * use `bg-surface`, `text-ink`, `border-line`, `text-bad`, …
+ *
+ * Contrast is part of the contract (NFR-U2: text >= 4.5:1). The theme's own two
+ * darkest greys (`dark_foreground` #6c7086 and `muted` #585b70) are therefore NOT
+ * used for text — they only reach ~3.4:1 on `surface`. The text ramp below is the
+ * lightest four greys, measured against `surface` #1e1e2e:
+ *
+ *   ink      #cdd6f4  11.34:1
+ *   ink-dim  #bac2de   9.26:1
+ *   muted    #a6adc8   7.37:1
+ *   subtle   #9399b2   5.81:1
+ *
+ * These values are a snapshot: the app is a static bundle, so if the desktop theme
+ * changes, re-apply them here.
+ */
+@theme {
+  /* surfaces */
+  --color-base: #11111b;
+  --color-base-deep: #0b0b12;
+  --color-surface: #1e1e2e;
+  --color-raised: #313244;
+  --color-line: #313244;
+
+  /* text — all four clear 4.5:1 on `surface` */
+  --color-ink: #cdd6f4;
+  --color-ink-dim: #bac2de;
+  --color-muted: #a6adc8;
+  --color-subtle: #9399b2;
+
+  /* accent and semantics */
+  --color-accent: #cba6f7;
+  --color-info: #89b4fa;
+  --color-cyan: #94e2d5;
+  --color-good: #a6e3a1;
+  --color-warn: #f9e2af;
+  --color-bad: #f38ba8;
+  --color-orange: #fab387;
+
+  /* node states (FR10, NFR-U2). Colour is never the only signal — every node
+     also carries a text state label. */
+  --color-node-undiscovered: #313244;
+  --color-node-frontier: #f9e2af;
+  --color-node-current: #cba6f7;
+  --color-node-visited: #a6e3a1;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--color-base);
+    color: var(--color-ink);
+  }
+}

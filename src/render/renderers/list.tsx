@@ -1,0 +1,211 @@
+/**
+ * List renderer — SVG for the linked list.
+ *
+ * WHAT IT DOES
+ *   A pure `(stateAtI, step) -> JSX` component: nodes in list order, the `next`
+ *   arrows between them, the `head` pointer, and the current step's highlight set.
+ *   A node that exists but is not linked yet is drawn as *floating* above the row.
+ *
+ * WHY THIS FILE EXISTS
+ *   One renderer per structure (A2 Listing 18). Because node ids are stable across
+ *   steps, a node moves instead of being recreated, so the animation reads as a
+ *   pointer change rather than a redraw (A1 §6.3, FR8).
+ *
+ * RULES
+ *   React owns every SVG element; D3 is not used here at all — the coordinates
+ *   come from `render/layout/scales` (`ADR-2`). The component receives the state
+ *   and the step, and never owns the step index or a timer. Every node also carries
+ *   a text state label, so colour is never the only signal (`NFR-U2`). Colours come
+ *   from the design tokens in `src/index.css` via `var(--color-*)`, never from
+ *   literal hex.
+ */
+
+import {
+  type LinkedListModel,
+  orderFromHead,
+} from '../../core/model/linkedList'
+import type { Step } from '../../core/trace/step'
+import { LIST_LAYOUT, layoutRow, type Point } from '../layout/scales'
+
+export type ListRendererProps = {
+  state: LinkedListModel
+  step: Step | undefined
+}
+
+const NODE_FILL = {
+  undiscovered: 'var(--color-node-undiscovered)',
+  touched: 'var(--color-node-frontier)',
+  current: 'var(--color-node-current)',
+} as const
+
+/** Ink that stays readable on each fill (light on dark fills, dark on bright). */
+const NODE_INK = {
+  undiscovered: 'var(--color-ink)',
+  touched: 'var(--color-base)',
+  current: 'var(--color-base)',
+} as const
+
+/* Non-text graphics only need 3:1 (WCAG 1.4.11); `subtle` gives 5.81:1. */
+const EDGE = 'var(--color-subtle)'
+const EDGE_ACTIVE = 'var(--color-accent)'
+
+export function ListRenderer({ state, step }: ListRendererProps) {
+  const radius = LIST_LAYOUT.nodeRadius
+  const ordered = orderFromHead(state)
+  const floating = state.nodes
+    .map((node) => node.id)
+    .filter((id) => !ordered.includes(id))
+
+  const positions: Record<string, Point> = {
+    ...layoutRow(ordered, LIST_LAYOUT.rowY),
+    ...layoutRow(floating, LIST_LAYOUT.floatY),
+  }
+
+  const activeId = step?.highlight.active
+  const touched = step?.highlight.nodes ?? []
+  const activeEdges = step?.highlight.edges ?? []
+  const headPosition = state.head === null ? undefined : positions[state.head]
+
+  return (
+    <svg
+      viewBox={`0 0 ${LIST_LAYOUT.width} ${LIST_LAYOUT.height}`}
+      className="h-auto w-full"
+      role="img"
+      aria-label={`Linked list with ${ordered.length} linked node(s)`}
+    >
+      <defs>
+        <marker
+          id="list-arrow"
+          viewBox="0 0 10 10"
+          refX="9"
+          refY="5"
+          markerWidth="7"
+          markerHeight="7"
+          orient="auto"
+        >
+          <path d="M 0 0 L 10 5 L 0 10 z" fill={EDGE} />
+        </marker>
+        <marker
+          id="list-arrow-active"
+          viewBox="0 0 10 10"
+          refX="9"
+          refY="5"
+          markerWidth="7"
+          markerHeight="7"
+          orient="auto"
+        >
+          <path d="M 0 0 L 10 5 L 0 10 z" fill={EDGE_ACTIVE} />
+        </marker>
+      </defs>
+
+      {headPosition !== undefined && (
+        <g>
+          <text
+            x={headPosition.x}
+            y={headPosition.y - radius - 22}
+            textAnchor="middle"
+            fontSize="12"
+            fontWeight="600"
+            fill="var(--color-ink)"
+          >
+            head
+          </text>
+          <line
+            x1={headPosition.x}
+            y1={headPosition.y - radius - 18}
+            x2={headPosition.x}
+            y2={headPosition.y - radius - 6}
+            stroke="var(--color-ink)"
+            strokeWidth="2"
+            markerEnd="url(#list-arrow)"
+          />
+        </g>
+      )}
+
+      {state.links.map((link) => {
+        const from = positions[link.from]
+        const to = positions[link.to]
+        if (from === undefined || to === undefined) return null
+
+        const dx = to.x - from.x
+        const dy = to.y - from.y
+        const distance = Math.hypot(dx, dy) || 1
+        const isActive = activeEdges.some(
+          (edge) => edge.from === link.from && edge.to === link.to,
+        )
+
+        return (
+          <line
+            key={`${link.from}->${link.to}`}
+            x1={from.x + (dx / distance) * radius}
+            y1={from.y + (dy / distance) * radius}
+            x2={to.x - (dx / distance) * radius}
+            y2={to.y - (dy / distance) * radius}
+            stroke={isActive ? EDGE_ACTIVE : EDGE}
+            strokeWidth={isActive ? 3 : 1.6}
+            markerEnd={`url(#${isActive ? 'list-arrow-active' : 'list-arrow'})`}
+          />
+        )
+      })}
+
+      {state.nodes.map((node) => {
+        const point = positions[node.id]
+        if (point === undefined) return null
+
+        const isActive = node.id === activeId
+        const isTouched = !isActive && touched.includes(node.id)
+        const isFloating = floating.includes(node.id)
+        const kind: keyof typeof NODE_FILL = isActive
+          ? 'current'
+          : isTouched
+            ? 'touched'
+            : 'undiscovered'
+        const stateLabel = isActive
+          ? 'current'
+          : isTouched
+            ? 'touched'
+            : isFloating
+              ? 'floating'
+              : 'idle'
+
+        return (
+          <g key={node.id} transform={`translate(${point.x} ${point.y})`}>
+            <title>{`${node.id} — value ${String(node.value)}, ${stateLabel}`}</title>
+            {isActive && (
+              <circle
+                r={radius + 6}
+                fill="none"
+                stroke="var(--color-node-current)"
+                strokeWidth={2}
+                strokeDasharray="5 4"
+              />
+            )}
+            <circle
+              r={radius}
+              fill={NODE_FILL[kind]}
+              stroke="var(--color-base)"
+              strokeWidth={1.5}
+            />
+            <text
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize="15"
+              fontWeight="600"
+              fill={NODE_INK[kind]}
+            >
+              {String(node.value)}
+            </text>
+            <text
+              y={radius + 15}
+              textAnchor="middle"
+              fontSize="10"
+              fill="var(--color-muted)"
+            >
+              {node.id} · {stateLabel}
+            </text>
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
