@@ -56,6 +56,13 @@ test-results/
 trace-dumps/
 *.trace.json
 
+# ------------------------- assignment resources -----------------------------
+# ProjectResources/ holds the Assignment 1 and 2 design documents. The LaTeX and
+# Markdown sources are tracked so the documents are version-controlled; the PDFs
+# are rebuildable artefacts, and Assignment 2.pdf is the course brief, which is
+# not ours to redistribute.
+ProjectResources/**/*.pdf
+
 # -------------------------------- logging -----------------------------------
 logs/
 *.log
