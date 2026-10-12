@@ -15,6 +15,9 @@
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
+    // Presets are authored as JSON fixtures (FR4) and imported by the typed loader
+    // in src/data/presets/index.ts, so the compiler has to read them as modules.
+    "resolveJsonModule": true,
 
     /* Linting */
     "strict": true,

@@ -2,11 +2,31 @@
  * The trace contract — the single module that defines what an algorithm emits and
  * what every panel reads (A2 Listing 17, ADR-6, NFR-M3).
  *
- * ============================ FROZEN · v1 ============================
- * Frozen when the first vertical slice (linked-list `insertAtHead`) was working,
- * as A2 §5.7 requires: build one slice, freeze the contract, then add structures.
- * See `ProjectResources/ADR-8-step-contract-freeze.md` for the decisions and the
- * rationale for each.
+ * ==================== FROZEN · v1.1 (additive over v1) ====================
+ * v1 was frozen when the first vertical slice (linked-list `insertAtHead`) was
+ * working, as A2 §5.7 requires: build one slice, freeze the contract, then add
+ * structures. v1.1 adds only OPTIONAL fields, exactly the mechanism ADR-8 sets
+ * out for "the concrete shapes for `aux` kinds other than none" and for the
+ * heap/BST/graph deltas:
+ *
+ *   - `StructureDelta.removed`  — a node/entry leaves the structure (BST delete,
+ *                                 heap extract). Without it a deleted node would
+ *                                 have to linger in `nodes`, which would be a lie.
+ *   - `StructureDelta.moved`    — an array-backed entry changes position (heap
+ *                                 swap). A swap is neither a link nor a value
+ *                                 change, so it gets its own channel rather than
+ *                                 being smuggled through `updated`.
+ *   - `AuxState.indices`        — the array slots an algorithm is looking at
+ *                                 (heap sift path), so the auxiliary panel can
+ *                                 mark exactly those cells.
+ *   - `AuxState.frameIds`       — the node ids of the live recursion frames, so
+ *                                 the recursion panel shows the call PATH and not
+ *                                 just its depth.
+ *
+ * Because every addition is optional and no existing generator emits it, the v1
+ * golden trace and the shape-lock test are unchanged: a v1 trace is still a valid
+ * v1.1 trace. See `ProjectResources/ADR-8-step-contract-freeze.md` for the
+ * decisions and the rationale for each field.
  *
  * The change policy from here:
  *   - ADDITIVE changes (a new optional field, a new `AuxKind`) are cheap: bump the
@@ -75,6 +95,26 @@ export type StructureDelta = {
   linked?: TraceEdge[] // parent/child, next, or heap index edits
   unlinked?: TraceEdge[]
   updated?: { id: NodeId; from: unknown; to: unknown }[] // node values and @fields
+  /**
+   * ADDITIVE (v1.1) — nodes/entries that leave the structure.
+   *
+   * `unlinked` only says an edge was cut; it cannot say the node itself is gone.
+   * A BST `delete` and a heap `extract` both remove a node outright, and keeping
+   * it in the model would draw a node the algorithm has forgotten. Removing a
+   * node also clears every pointer that still referenced it, so a model can never
+   * hold a dangling `left`/`right` id after replay.
+   */
+  removed?: NodeId[]
+  /**
+   * ADDITIVE (v1.1) — an existing array-backed entry changes position.
+   *
+   * The heap has no pointers: `entries[i]` *is* the node at tree slot `i`, so a
+   * sift swap is a positional move, not a link and not a value change. `to` is the
+   * destination INDEX, and a swap is expressed as one entry per participating
+   * node, e.g. `moved: [{ id: 'h4', to: 0 }, { id: 'h1', to: 3 }]`. A reducer
+   * applies the moves in order by looking each id up in the current array.
+   */
+  moved?: { id: NodeId; to: number }[]
 }
 
 /**
@@ -97,10 +137,28 @@ export type AuxKind = (typeof AUX_KINDS)[number]
 
 export type AuxState = {
   kind: AuxKind
-  values?: (string | number)[]
-  visited?: NodeId[]
+  values?: (string | number)[] // structure values: stack/queue frontier, heap array
+  visited?: NodeId[] // discovered/visited set, in discovery order
   frames?: number[] // recursion depth per frame
   comparisons?: number // running model charge
+  /**
+   * ADDITIVE (v1.1) — the array slots the algorithm is currently looking at.
+   *
+   * The heap's whole teaching point is that an array slot and a tree position are
+   * the same index. The generator names the slots under consideration (the entry
+   * being sifted and the parent/child it is compared with) so the auxiliary panel
+   * can mark them instead of re-deriving the sift path from the model.
+   */
+  indices?: number[]
+  /**
+   * ADDITIVE (v1.1) — node ids of the live recursion frames, outermost first.
+   *
+   * `frames` gives the DEPTH of each frame (it stays `number[]` for the frozen
+   * contract), but a depth alone cannot be drawn. `frameIds` gives the call PATH,
+   * which is the state a recursion panel actually needs and the clearest form of
+   * "the call stack is the route from the root to the current node".
+   */
+  frameIds?: NodeId[]
 }
 
 export type Step = {

@@ -15,15 +15,22 @@
  *   time*, not tick counts, so a slow frame drops steps instead of changing the
  *   logical playback rate.
  *
+ * STRUCTURE-AGNOSTIC BY DESIGN
+ *   The controller does not know about lists, heaps, trees or graphs. `LoadInput`
+ *   carries a `structureId`, and `app/reducers.ts` supplies the reducer the trace
+ *   must be replayed with. Adding a structure therefore changes the registry, not
+ *   this file — which is the property NFR-S2 asks for. The models are tagged with
+ *   their id in `StructureState`, so the render layer gets a type-safe model.
+ *
  * RULES
  *   The only layer that knows about time, and only PLAYING owns a timer. It must
  *   not import React or the DOM — it is a plain object, unit-testable in Node.
  *   `reconstruct` is always a fresh copy, so nothing can corrupt a checkpoint.
  */
 
-import { applyListDelta, type LinkedListModel } from '../core/model/linkedList'
 import type { GenerateSummary, Step } from '../core/trace/step'
 import { createTraceStore, type TraceStore } from '../core/trace/store'
+import { reducerFor, wrapState, type StructureState } from './reducers'
 import { canPlay, type Phase } from './stateMachine'
 
 export type ControllerSnapshot = {
@@ -37,7 +44,8 @@ export type ControllerSnapshot = {
 }
 
 export type LoadInput = {
-  initial: LinkedListModel
+  /** The structure before step 0. Which model it is follows from `structureId`. */
+  initial: unknown
   steps: readonly Step[]
   summary: GenerateSummary
   structureId: string
@@ -47,8 +55,8 @@ export type LoadInput = {
 export type PlaybackController = {
   subscribe(listener: () => void): () => void
   getSnapshot(): ControllerSnapshot
-  /** The structure at the current index. */
-  getState(): LinkedListModel
+  /** The structure at the current index, or `null` before a trace is loaded. */
+  getState(): StructureState | null
   load(input: LoadInput): void
   fail(message: string): void
   play(): void
@@ -68,8 +76,6 @@ export type ControllerOptions = {
   now?: () => number
 }
 
-const EMPTY_LIST: LinkedListModel = { nodes: [], links: [], head: null }
-
 export function createPlaybackController(
   options: ControllerOptions = {},
 ): PlaybackController {
@@ -78,7 +84,7 @@ export function createPlaybackController(
   const now = options.now ?? ((): number => performance.now())
 
   const listeners: (() => void)[] = []
-  let store: TraceStore<LinkedListModel> | null = null
+  let store: TraceStore<unknown> | null = null
   let timer: ReturnType<typeof setInterval> | null = null
   let playStartedAt = 0
   let indexAtPlayStart = 0
@@ -162,13 +168,28 @@ export function createPlaybackController(
     },
 
     getState() {
-      if (store === null) return structuredClone(EMPTY_LIST)
-      return store.reconstruct(snapshot.index)
+      if (store === null || snapshot.structureId === null) return null
+      return wrapState(snapshot.structureId, store.reconstruct(snapshot.index))
     },
 
     load(input) {
       stopTimer()
-      store = createTraceStore(input.initial, input.steps, applyListDelta)
+
+      // An unknown structure id is a programming error (the catalogue and the
+      // registry are out of step), so it is reported through the error phase
+      // rather than thrown at the caller.
+      let reducer: ReturnType<typeof reducerFor>
+      try {
+        reducer = reducerFor(input.structureId)
+      } catch (error) {
+        publish({
+          phase: 'ERROR',
+          error: error instanceof Error ? error.message : String(error),
+        })
+        return
+      }
+
+      store = createTraceStore<unknown>(input.initial, input.steps, reducer)
       publish({
         phase: 'READY',
         index: 0,

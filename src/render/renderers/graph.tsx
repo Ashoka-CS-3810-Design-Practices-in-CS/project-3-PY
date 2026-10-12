@@ -1,24 +1,179 @@
 /**
  * Graph renderer — SVG for the graph.
  *
- * WHAT GOES HERE
- *   A pure `(stateAtI, step) -> JSX` component drawing vertices and edges, with
- *   the four traversal states (undiscovered / frontier / current / visited)
- *   distinguished by colour **and** label/shape. Coordinates come from
- *   `render/layout/force.ts`.
+ * WHAT IT DOES
+ *   Draws every vertex and edge, with the four traversal states made visible:
+ *   *undiscovered* (not in the visited set), *frontier* (the current step's
+ *   highlight), *current* (the vertex being expanded) and *visited*. Each state
+ *   carries a fill **and** a text label, so the picture never depends on colour
+ *   alone (`NFR-U2`, `FR12`).
  *
  * WHY THIS FILE EXISTS
- *   One renderer per structure (A2 Listing 18); the surface for BFS and DFS. The
- *   frontier is the thing a textbook figure cannot show, so the renderer must
- *   expose it directly (FR10, FR12).
+ *   One renderer per structure (A2 Listing 18) and the surface for BFS/DFS. The
+ *   frontier is the thing a textbook figure cannot show — BFS grows it sideways and
+ *   DFS dives — so the renderer exposes `step.aux.visited` and the step's highlight
+ *   directly, rather than inferring anything from the model (`FR10`).
  *
  * RULES
- *   Layout coordinates are view state, never algorithm input (A1 §6.3). `d3-force`
- *   mutates its input, so it runs on a **copy** and the result is handed to React
- *   as values (`ADR-2`). No step index, no timer.
- *
- * STATUS
- *   Not implemented. Added after the Step contract is frozen.
+ *   Coordinates come from `render/layout/force` and are view state, never algorithm
+ *   input (`A1 §6.3`, `ADR-2`). The layout runs on a copy, so the model and the
+ *   traversal result are untouched. No step index, no timer. Colours are tokens.
  */
 
-export {}
+import { graphEdges, type GraphModel } from '../../core/model/graph'
+import type { Step } from '../../core/trace/step'
+import { layoutGraph } from '../layout/force'
+import { GRAPH_LAYOUT, type Point } from '../layout/scales'
+
+export type GraphRendererProps = {
+  state: GraphModel
+  step: Step | undefined
+}
+
+const NODE_FILL = {
+  undiscovered: 'var(--color-node-undiscovered)',
+  frontier: 'var(--color-node-frontier)',
+  current: 'var(--color-node-current)',
+  visited: 'var(--color-node-visited)',
+} as const
+
+const NODE_INK = {
+  undiscovered: 'var(--color-ink)',
+  frontier: 'var(--color-base)',
+  current: 'var(--color-base)',
+  visited: 'var(--color-base)',
+} as const
+
+const EDGE = 'var(--color-subtle)'
+const EDGE_ACTIVE = 'var(--color-orange)'
+
+/** Trims a line from the centre of one circle to the centre of another. */
+function segment(from: Point, to: Point, radius: number) {
+  const dx = to.x - from.x
+  const dy = to.y - from.y
+  const distance = Math.hypot(dx, dy) || 1
+  return {
+    x1: from.x + (dx / distance) * radius,
+    y1: from.y + (dy / distance) * radius,
+    x2: to.x - (dx / distance) * radius,
+    y2: to.y - (dy / distance) * radius,
+  }
+}
+
+export function GraphRenderer({ state, step }: GraphRendererProps) {
+  const radius = GRAPH_LAYOUT.nodeRadius
+  const positions = layoutGraph(state)
+  const edges = graphEdges(state)
+  const activeId = step?.highlight.active
+  const highlighted = step?.highlight.nodes ?? []
+  const visited = step?.aux?.visited ?? []
+  const activeEdges = step?.highlight.edges ?? []
+
+  const kindFor = (id: string): keyof typeof NODE_FILL => {
+    if (id === activeId) return 'current'
+    if (visited.includes(id)) return 'visited'
+    if (highlighted.includes(id)) return 'frontier'
+    return 'undiscovered'
+  }
+
+  return (
+    <svg
+      viewBox={`0 0 ${GRAPH_LAYOUT.width} ${GRAPH_LAYOUT.height}`}
+      className="h-auto w-full"
+      role="img"
+      aria-label={`Graph with ${state.vertices.length} vertices and ${edges.length} edges${state.directed ? ' (directed)' : ''}`}
+    >
+      <defs>
+        <marker
+          id="graph-arrow"
+          viewBox="0 0 10 10"
+          refX="9"
+          refY="5"
+          markerWidth="6"
+          markerHeight="6"
+          orient="auto"
+        >
+          <path d="M 0 0 L 10 5 L 0 10 z" fill={EDGE} />
+        </marker>
+        <marker
+          id="graph-arrow-active"
+          viewBox="0 0 10 10"
+          refX="9"
+          refY="5"
+          markerWidth="6"
+          markerHeight="6"
+          orient="auto"
+        >
+          <path d="M 0 0 L 10 5 L 0 10 z" fill={EDGE_ACTIVE} />
+        </marker>
+      </defs>
+
+      {edges.map((edge) => {
+        const from = positions[edge.from]
+        const to = positions[edge.to]
+        if (from === undefined || to === undefined) return null
+        const isActive = activeEdges.some(
+          (candidate) =>
+            (candidate.from === edge.from && candidate.to === edge.to) ||
+            (candidate.from === edge.to && candidate.to === edge.from),
+        )
+        return (
+          <line
+            key={`${edge.from}-${edge.to}`}
+            {...segment(from, to, radius)}
+            stroke={isActive ? EDGE_ACTIVE : EDGE}
+            strokeWidth={isActive ? 3 : 1.6}
+            markerEnd={
+              state.directed
+                ? `url(#${isActive ? 'graph-arrow-active' : 'graph-arrow'})`
+                : undefined
+            }
+          />
+        )
+      })}
+
+      {state.vertices.map((vertex) => {
+        const point = positions[vertex.id]
+        if (point === undefined) return null
+        const kind = kindFor(vertex.id)
+        return (
+          <g key={vertex.id} transform={`translate(${point.x} ${point.y})`}>
+            <title>{`${vertex.label} (${vertex.id}) — ${kind}`}</title>
+            {vertex.id === activeId && (
+              <circle
+                r={radius + 5}
+                fill="none"
+                stroke="var(--color-node-current)"
+                strokeWidth={2}
+                strokeDasharray="4 3"
+              />
+            )}
+            <circle
+              r={radius}
+              fill={NODE_FILL[kind]}
+              stroke="var(--color-base)"
+              strokeWidth={1.5}
+            />
+            <text
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize="14"
+              fontWeight="600"
+              fill={NODE_INK[kind]}
+            >
+              {vertex.label}
+            </text>
+            <text
+              y={radius + 12}
+              textAnchor="middle"
+              fontSize="9"
+              fill="var(--color-muted)"
+            >
+              {vertex.id} · {kind}
+            </text>
+          </g>
+        )
+      })}
+    </svg>
+  )
+}

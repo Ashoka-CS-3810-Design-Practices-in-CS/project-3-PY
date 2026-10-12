@@ -20,16 +20,25 @@ export type PseudocodePaneProps = {
   lines: readonly string[]
   /** 1-based; 0 means "no step selected". */
   activeLine: number
+  /**
+   * The operation the listing belongs to, so a composed trace can show
+   * "Insert" during the build and "Inorder" during the traversal.
+   */
+  operationLabel?: string
 }
 
-export function PseudocodePane({ lines, activeLine }: PseudocodePaneProps) {
+export function PseudocodePane({
+  lines,
+  activeLine,
+  operationLabel,
+}: PseudocodePaneProps) {
   return (
     <section
       aria-label="Pseudocode"
       className="rounded-xl border border-line bg-surface p-3"
     >
       <h2 className="mb-2 text-xs font-semibold tracking-wide text-muted uppercase">
-        Pseudocode
+        Pseudocode{operationLabel !== undefined ? ` · ${operationLabel}` : ''}
       </h2>
       {lines.length === 0 ? (
         <p className="text-sm text-muted">No listing for this operation.</p>

@@ -30,6 +30,35 @@ export const LIST_LAYOUT = {
   nodeRadius: 26,
 } as const
 
+/**
+ * Tree geometry constants. Shared by the BST renderer and the heap's tree
+ * projection, so a node radius doesn't differ between two views of a tree.
+ */
+export const TREE_LAYOUT = {
+  width: 760,
+  height: 340,
+  margin: 40,
+  nodeRadius: 20,
+} as const
+
+/** Heap constants: one SVG holds the array row *and* the tree above it. */
+export const HEAP_LAYOUT = {
+  width: 760,
+  height: 400,
+  margin: 40,
+  nodeRadius: 17,
+  arrayY: 340,
+  cellHeight: 32,
+} as const
+
+/** Graph viewport. The force layout is bounded by these numbers. */
+export const GRAPH_LAYOUT = {
+  width: 760,
+  height: 430,
+  nodeRadius: 20,
+  padding: 54,
+} as const
+
 /** Evenly spaces `ids` across the drawing width at row `y`. */
 export function layoutRow(
   ids: readonly NodeId[],
@@ -51,4 +80,28 @@ export function layoutRow(
     positions[id] = { x: Math.round(x(index)), y }
   })
   return positions
+}
+
+/**
+ * Evenly spaces `count` positions by INDEX (not by id) across the drawing width at
+ * row `y`. The heap's array view needs this: its cells are identified by array
+ * index, which is also tree slot, and the two must line up.
+ */
+export function layoutColumns(
+  count: number,
+  y: number,
+  width = LIST_LAYOUT.width,
+  margin = LIST_LAYOUT.margin,
+): Point[] {
+  if (count <= 0) return []
+  if (count === 1) return [{ x: Math.round(width / 2), y }]
+
+  const x = scaleLinear()
+    .domain([0, count - 1])
+    .range([margin, width - margin])
+
+  return Array.from({ length: count }, (_, index) => ({
+    x: Math.round(x(index)),
+    y,
+  }))
 }

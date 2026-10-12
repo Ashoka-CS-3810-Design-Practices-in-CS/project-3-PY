@@ -1,0 +1,30 @@
+{
+  "id": "graph-bfs-dfs",
+  "structureId": "graph",
+  "label": "Graph with cycles (16 vertices)",
+  "description": "A sparse undirected graph with 16 vertices and 20 edges, chosen so BFS and DFS produce visibly different orders from the same source. Neighbour order is the edge order below, which is what makes the traversal reproducible.",
+  "directed": false,
+  "source": "A",
+  "edges": [
+    { "from": "A", "to": "B" },
+    { "from": "A", "to": "C" },
+    { "from": "B", "to": "D" },
+    { "from": "B", "to": "E" },
+    { "from": "C", "to": "F" },
+    { "from": "C", "to": "G" },
+    { "from": "D", "to": "H" },
+    { "from": "E", "to": "I" },
+    { "from": "F", "to": "J" },
+    { "from": "G", "to": "K" },
+    { "from": "H", "to": "L" },
+    { "from": "I", "to": "M" },
+    { "from": "J", "to": "N" },
+    { "from": "K", "to": "O" },
+    { "from": "L", "to": "P" },
+    { "from": "M", "to": "P" },
+    { "from": "N", "to": "O" },
+    { "from": "O", "to": "P" },
+    { "from": "E", "to": "F" },
+    { "from": "I", "to": "J" }
+  ]
+}
