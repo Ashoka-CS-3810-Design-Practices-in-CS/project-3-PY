@@ -82,7 +82,25 @@ export const PSEUDOCODE_LISTINGS: Record<string, PseudocodeListing> = {
       '    head ← node',
       '    return head',
     ],
-  }, 
+  },  
+
+
+  insertAtTail: {
+    id: 'insertAtTail',
+    lines: [
+      'function insertAtTail(head, value):',
+      '    node ← new Node(value)',
+      '    if head = null:',
+      '        head ← node',
+      '        return head',
+      '    current ← head',
+      '    while current.next ≠ null:',
+      '        current ← current.next',
+      '    current.next ← node',
+      '    return head',
+    ],
+  },
+
 
   deleteByValue: {
   id: 'deleteByValue',
@@ -398,7 +416,23 @@ export const OPERATION_META: Record<string, OperationMeta> = {
     assumptions: [
       'Only the head pointer changes; the existing list is never walked.',
     ],
-  }, 
+  },  
+  
+  
+  insertAtTail: {
+    id: 'insertAtTail',
+    label: 'Insert at tail',
+    pseudocodeId: 'insertAtTail',
+    inputs: ['values', 'value'],
+    best: 'O(1)',
+    average: 'O(n)',
+    worst: 'O(n)',
+    space: 'O(1)',
+    assumptions: [
+      'Traverses the list to find the last node because the model has no tail pointer.',
+      'For an empty list, the new node becomes the head.',
+    ],
+  },
 
 
   
@@ -701,7 +735,7 @@ export const CATALOGUE: CatalogueEntry[] = [
     label: 'Linked list',
     description:
       'A sequence of nodes joined by next pointers, reached through a single head reference.',
-    operations: ['insertAtHead', 'deleteByValue'],
+    operations: ['insertAtHead', 'insertAtTail', 'deleteByValue'],
     rules: ['Values are numbers or short strings.'],
   },
   {

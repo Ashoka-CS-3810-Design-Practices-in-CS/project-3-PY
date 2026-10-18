@@ -50,6 +50,7 @@ import { heapExtractMin } from '../core/operations/heap/extractMin'
 import { heapInsert } from '../core/operations/heap/insert'
 import { heapInsertAll } from '../core/operations/heap/insertAll'
 import { insertAtHead } from '../core/operations/list/insertAtHead'
+import { insertAtTail } from '../core/operations/list/insertAtTail'
 import { deleteByValue } from '../core/operations/list/deleteByValue'
 import { inorder } from '../core/operations/traverse/inorder'
 import { levelOrder } from '../core/operations/traverse/levelOrder'
@@ -253,7 +254,14 @@ export function runOperation(request: RunRequest): RunOutcome {
     case 'insertAtHead': {
       const initial = buildList(values)
       return finish(report, initial, [insertAtHead(initial, { value })])
-    }
+    }  
+
+    case 'insertAtTail': {
+  const initial = buildList(values)
+  return finish(report, initial, [insertAtTail(initial, { value })])
+   }
+
+
 
     case 'deleteByValue': {
       const initial = buildList(values)
