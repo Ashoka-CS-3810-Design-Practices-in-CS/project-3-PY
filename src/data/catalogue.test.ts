@@ -5,6 +5,7 @@ import { buildBst } from '../core/model/bst'
 import { heapFromValues, heapifyInPlace } from '../core/model/binaryHeap'
 import { buildGraphFromLabels } from '../core/model/graph'
 import { insertAtHead } from '../core/operations/list/insertAtHead'
+import { deleteByValue } from '../core/operations/list/deleteByValue'
 import { bstDelete } from '../core/operations/bst/delete'
 import { bstInsert } from '../core/operations/bst/insert'
 import { bstInsertAll } from '../core/operations/bst/insertAll'
@@ -61,7 +62,17 @@ const RUNS: { operation: string; allowed: string[]; steps: Step[] }[] = [
     operation: 'insertAtHead',
     allowed: ['insertAtHead'],
     steps: insertAtHead(buildList([50, 30, 70]), { value: 45 }).trace,
+  }, 
+
+  {
+  operation: 'deleteByValue',
+  allowed: ['deleteByValue'],
+  steps: deleteByValue(buildList([50, 30, 70]), { value: 30 }).trace,
   },
+
+
+
+
   {
     operation: 'bstInsertAll',
     allowed: ['bstInsert'],

@@ -50,6 +50,7 @@ import { heapExtractMin } from '../core/operations/heap/extractMin'
 import { heapInsert } from '../core/operations/heap/insert'
 import { heapInsertAll } from '../core/operations/heap/insertAll'
 import { insertAtHead } from '../core/operations/list/insertAtHead'
+import { deleteByValue } from '../core/operations/list/deleteByValue'
 import { inorder } from '../core/operations/traverse/inorder'
 import { levelOrder } from '../core/operations/traverse/levelOrder'
 import { postorder } from '../core/operations/traverse/postorder'
@@ -247,11 +248,16 @@ export function runOperation(request: RunRequest): RunOutcome {
   const values = valuesReport.accepted
   const value = valueReport.accepted[0] as StructureValue
 
-  switch (request.operationId) {
+  switch (request.operationId) {    
     // ------------------------------------------------------------------ list
     case 'insertAtHead': {
       const initial = buildList(values)
       return finish(report, initial, [insertAtHead(initial, { value })])
+    }
+
+    case 'deleteByValue': {
+      const initial = buildList(values)
+      return finish(report, initial, [deleteByValue(initial, { value })])
     }
 
     // ------------------------------------------------------------------- BST

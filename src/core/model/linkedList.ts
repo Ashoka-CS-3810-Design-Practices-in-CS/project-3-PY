@@ -147,13 +147,32 @@ export function applyListDelta(
       head =
         change.to === null || change.to === undefined ? null : String(change.to)
       continue
-    }
+    } 
+  
 
     const index = nodes.findIndex((node) => node.id === change.id)
     if (index !== -1) {
       nodes[index] = { ...nodes[index], value: change.to as string | number }
     }
+  } 
+
+  for (const removedId of delta.removed ?? []) {
+  const index = nodes.findIndex((node) => node.id === removedId)
+
+  if (index !== -1) {
+    nodes.splice(index, 1)
   }
+}
+
+// Remove any links connected to deleted nodes.
+for (let i = links.length - 1; i >= 0; i--) {
+  if (
+    delta.removed?.includes(links[i].from) ||
+    delta.removed?.includes(links[i].to)
+  ) {
+    links.splice(i, 1)
+  }
+}
 
   return { nodes, links, head }
 }

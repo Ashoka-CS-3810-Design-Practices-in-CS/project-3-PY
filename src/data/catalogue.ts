@@ -82,7 +82,28 @@ export const PSEUDOCODE_LISTINGS: Record<string, PseudocodeListing> = {
       '    head ← node',
       '    return head',
     ],
+  }, 
+
+  deleteByValue: {
+  id: 'deleteByValue',
+  lines: [
+    'function deleteByValue(head, value):',
+    '    current ← head',
+    '    while current ≠ null:',
+    '        if current.value = value:',
+    '            if current = head:',
+    '                head ← current.next',
+    '            else:',
+    '                predecessor.next ← current.next',
+    '            return head',
+    '        predecessor ← current',
+    '        current ← current.next',
+    '    return head',
+  ],
   },
+
+
+
 
   // ---------------------------------------------------------------- BST
   bstSearch: {
@@ -377,7 +398,26 @@ export const OPERATION_META: Record<string, OperationMeta> = {
     assumptions: [
       'Only the head pointer changes; the existing list is never walked.',
     ],
+  }, 
+
+
+  
+  deleteByValue: {
+    id: 'deleteByValue',
+    label: 'Delete by value',
+    pseudocodeId: 'deleteByValue',
+    inputs: ['values', 'value'],
+    best: 'O(1)',
+    average: 'O(n)',
+    worst: 'O(n)',
+    space: 'O(1)',
+    assumptions: [
+      'Deletes only the first node matching the requested value.',
+      'If the value is absent, the list remains unchanged.',
+    ],
   },
+
+
 
   // ---------------------------------------------------------------- BST
   bstInsertAll: {
@@ -661,7 +701,7 @@ export const CATALOGUE: CatalogueEntry[] = [
     label: 'Linked list',
     description:
       'A sequence of nodes joined by next pointers, reached through a single head reference.',
-    operations: ['insertAtHead'],
+    operations: ['insertAtHead', 'deleteByValue'],
     rules: ['Values are numbers or short strings.'],
   },
   {
