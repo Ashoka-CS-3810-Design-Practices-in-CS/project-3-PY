@@ -4,9 +4,9 @@
  * WHAT IT DOES
  *   Draws every vertex and edge, with the four traversal states made visible:
  *   *undiscovered* (not in the visited set), *frontier* (the current step's
- *   highlight), *current* (the vertex being expanded) and *visited*. Each state
- *   carries a fill **and** a text label, so the picture never depends on colour
- *   alone (`NFR-U2`, `FR12`).
+ *   highlight), *current* (the vertex being expanded) and *visited*. The vertex
+ *   label is the only text drawn inside a node; state comes from fill, the active
+ *   ring, the legend and the accessible `<title>` (`NFR-U2`, `FR12`).
  *
  * WHY THIS FILE EXISTS
  *   One renderer per structure (A2 Listing 18) and the surface for BFS/DFS. The
@@ -47,6 +47,12 @@ const NODE_INK = {
 const EDGE = 'var(--color-subtle)'
 const EDGE_ACTIVE = 'var(--color-orange)'
 
+/** Longer vertex labels get a smaller face so they stay inside the circle. */
+function labelFontSize(label: string, base: number): number {
+  if (label.length <= 2) return base
+  return label.length === 3 ? base - 2 : base - 4
+}
+
 /** Trims a line from the centre of one circle to the centre of another. */
 function segment(from: Point, to: Point, radius: number) {
   const dx = to.x - from.x
@@ -68,9 +74,17 @@ export function GraphRenderer({ state, step }: GraphRendererProps) {
   const highlighted = step?.highlight.nodes ?? []
   const visited = step?.aux?.visited ?? []
   const activeEdges = step?.highlight.edges ?? []
+  // BFS's `aux.visited` includes everything discovered, so the queue is what
+  // actually distinguishes the frontier. Keep those vertices yellow instead of
+  // colouring the whole discovered set green.
+  const queued =
+    step?.aux?.kind === 'queue'
+      ? (step.aux.values ?? []).map((value) => String(value))
+      : []
 
   const kindFor = (id: string): keyof typeof NODE_FILL => {
     if (id === activeId) return 'current'
+    if (queued.includes(id)) return 'frontier'
     if (visited.includes(id)) return 'visited'
     if (highlighted.includes(id)) return 'frontier'
     return 'undiscovered'
@@ -157,19 +171,11 @@ export function GraphRenderer({ state, step }: GraphRendererProps) {
             <text
               textAnchor="middle"
               dominantBaseline="central"
-              fontSize="14"
+              fontSize={labelFontSize(vertex.label, 14)}
               fontWeight="600"
               fill={NODE_INK[kind]}
             >
               {vertex.label}
-            </text>
-            <text
-              y={radius + 12}
-              textAnchor="middle"
-              fontSize="9"
-              fill="var(--color-muted)"
-            >
-              {vertex.id} · {kind}
             </text>
           </g>
         )

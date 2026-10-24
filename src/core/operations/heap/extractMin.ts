@@ -57,6 +57,8 @@ export type HeapExtractResult = {
 export function heapExtractMin(initial: BinaryHeap): HeapExtractResult {
   const steps: Step[] = []
   let state = initial
+  /** Values already extracted by this run, shown in the auxiliary output row. */
+  const output: (string | number)[] = []
 
   /**
    * Apply a delta, then record the step that produced it. Every edit goes through
@@ -82,7 +84,12 @@ export function heapExtractMin(initial: BinaryHeap): HeapExtractResult {
         edges: [],
       },
       delta,
-      aux: { kind: 'heap', values: heapValues(state), comparisons },
+      aux: {
+        kind: 'heap',
+        values: heapValues(state),
+        output: [...output],
+        comparisons,
+      },
     })
   }
 
@@ -114,6 +121,18 @@ export function heapExtractMin(initial: BinaryHeap): HeapExtractResult {
   record(
     3,
     `The minimum is at the root of the array: slot 0 holds ${String(root.value)}. Reading it is O(1).`,
+    {},
+    [root.id],
+    root.id,
+    0,
+  )
+
+  // The extracted value is the operation's OUTPUT. Show it before the array is
+  // reorganised, so the answer is visible while the sift-down runs.
+  output.push(root.value)
+  record(
+    3,
+    `Extract-min: ${String(root.value)} is the output. Set it aside before the heap is restructured.`,
     {},
     [root.id],
     root.id,
@@ -187,6 +206,7 @@ export function heapExtractMin(initial: BinaryHeap): HeapExtractResult {
     startIndex: steps.length,
     comparisons: 0,
     preferred: 'smaller',
+    output: [...output],
   })
   steps.push(...sift.steps)
   state = sift.state

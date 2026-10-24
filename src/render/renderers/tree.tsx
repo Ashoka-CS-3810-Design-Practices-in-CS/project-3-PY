@@ -4,10 +4,11 @@
  * WHAT IT DOES
  *   A pure `(stateAtI, step) -> JSX` component drawing every node and its
  *   `left`/`right` edges, with the current step's highlight set emphasised. It is
- *   the shared surface for the BST operations and all four traversals, so a node
- *   carries both a fill and a text state label: a traversal's *visited* set and a
- *   search's *examined path* are different ideas and must be distinguishable
- *   (`NFR-U2`, `FR8`).
+ *   the shared surface for the BST operations and all four traversals, so the
+ *   picture distinguishes a traversal's *visited* set from a search's *examined
+ *   path* (`NFR-U2`, `FR8`). Node captions are deliberately omitted: the value is
+ *   the only text drawn inside a node, and state is carried by fill, the active
+ *   ring, the legend and the accessible `<title>`.
  *
  * WHY THIS FILE EXISTS
  *   One renderer per structure (A2 Listing 18). Because node ids are stable across
@@ -49,6 +50,13 @@ const NODE_INK = {
 const EDGE = 'var(--color-subtle)'
 const EDGE_ACTIVE = 'var(--color-accent)'
 
+/** Long values get a smaller face so they stay inside the circle. */
+function valueFontSize(value: unknown, base: number): number {
+  const length = String(value).length
+  if (length <= 2) return base
+  return length === 3 ? base - 2 : base - 4
+}
+
 /** Trims a line to a circle's edge so arrow-less edges don't run under a node. */
 function segment(from: Point, to: Point, radius: number) {
   const dx = to.x - from.x
@@ -64,7 +72,8 @@ function segment(from: Point, to: Point, radius: number) {
 
 export function TreeRenderer({ state, step }: TreeRendererProps) {
   const radius = TREE_LAYOUT.nodeRadius
-  const positions = layoutTree(state)
+  const treeLayout = layoutTree(state)
+  const positions = treeLayout.positions
   const activeId = step?.highlight.active
   const touched = step?.highlight.nodes ?? []
   const visited = step?.aux?.visited ?? []
@@ -79,7 +88,7 @@ export function TreeRenderer({ state, step }: TreeRendererProps) {
 
   return (
     <svg
-      viewBox={`0 0 ${TREE_LAYOUT.width} ${TREE_LAYOUT.height}`}
+      viewBox={`0 0 ${treeLayout.width} ${treeLayout.height}`}
       className="h-auto w-full"
       role="img"
       aria-label={`Binary search tree with ${state.nodes.length} node(s)`}
@@ -130,19 +139,11 @@ export function TreeRenderer({ state, step }: TreeRendererProps) {
             <text
               textAnchor="middle"
               dominantBaseline="central"
-              fontSize="14"
+              fontSize={valueFontSize(node.value, 14)}
               fontWeight="600"
               fill={NODE_INK[kind]}
             >
               {String(node.value)}
-            </text>
-            <text
-              y={radius + 13}
-              textAnchor="middle"
-              fontSize="9"
-              fill="var(--color-muted)"
-            >
-              {node.id} · {kind}
             </text>
           </g>
         )

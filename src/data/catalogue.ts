@@ -190,23 +190,6 @@ export const PSEUDOCODE_LISTINGS: Record<string, PseudocodeListing> = {
       '    return root',
     ],
   },
-  bstMinMax: {
-    id: 'bstMinMax',
-    lines: [
-      'function minMax(root):',
-      '    minimum ← null',
-      '    current ← root',
-      '    while current is not null:',
-      '        minimum ← current',
-      '        current ← current.left',
-      '    maximum ← null',
-      '    current ← root',
-      '    while current is not null:',
-      '        maximum ← current',
-      '        current ← current.right',
-      '    return minimum, maximum',
-    ],
-  },
 
   // ---------------------------------------------------------------- heap
   heapInsert: {
@@ -511,20 +494,6 @@ export const OPERATION_META: Record<string, OperationMeta> = {
       'The two-children case copies the in-order successor up, then deletes it.',
     ],
   },
-  bstMinMax: {
-    id: 'bstMinMax',
-    label: 'Minimum / maximum',
-    pseudocodeId: 'bstMinMax',
-    inputs: ['values'],
-    best: 'O(1)',
-    average: 'O(log n)',
-    worst: 'O(n)',
-    space: 'O(1)',
-    assumptions: [
-      'Minimum walks left, maximum walks right; both are O(h).',
-      'Contrast with the heap, where reading the extreme is O(1).',
-    ],
-  },
 
   // ---------------------------------------------------------------- heap
   heapInsertAll: {
@@ -767,7 +736,6 @@ export const CATALOGUE: CatalogueEntry[] = [
       'bstInsert',
       'bstDelete',
       'bstSearch',
-      'bstMinMax',
       'preorder',
       'inorder',
       'postorder',

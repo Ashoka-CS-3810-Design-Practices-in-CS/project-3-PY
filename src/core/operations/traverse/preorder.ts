@@ -76,27 +76,18 @@ export function preorder(tree: BinarySearchTree): PreorderResult {
     return edges
   }
 
-  /**
-   * The recursive walk. `path` is the logical call stack *including* the node being
-   * entered, so the frame list in `aux` is exactly the route from the root.
-   */
-  const walk = (id: NodeId | null, path: readonly NodeId[]): void => {
-    if (id === null) return
-    const node = bstNodeById(tree, id)
-    /* istanbul ignore if — the walk only ever follows ids that resolve. */
-    if (node === undefined) return
-
-    const framePath = [...path, id]
-    orderIds.push(id)
-    order.push(node.value)
-
+  const record = (
+    codeLine: number,
+    narration: string,
+    id: NodeId,
+    framePath: readonly NodeId[],
+  ): void => {
     steps.push({
       index: steps.length,
       operation: OPERATION_ID,
-      codeLine: 4,
-      narration: `Visit ${String(node.value)} at ${id}. The call stack is ${framePath.join(' → ')}.`,
+      codeLine,
+      narration,
       highlight: {
-        // Every node visited so far, plus the active one — progress and focus.
         nodes: [...orderIds],
         active: id,
         edges: edgesForPath(framePath),
@@ -105,17 +96,63 @@ export function preorder(tree: BinarySearchTree): PreorderResult {
       aux: {
         kind: 'recursion',
         frames: framePath.map((_, depth) => depth),
-        frameIds: framePath,
+        frameIds: [...framePath],
+        frameValues: framePath.map(
+          (frameId) => bstNodeById(tree, frameId)?.value ?? frameId,
+        ),
         // The visit order so far, so the tree renderer can colour nodes the
         // traversal has already finished with (`aux.visited`, FR10).
         visited: [...orderIds],
+        // The learner-facing output sequence, shown while it grows.
+        output: [...order],
         comparisons: 0, // a traversal compares no keys; its work is the visits
       },
     })
+  }
 
-    // VISIT-BEFORE: the emit above happens before these two calls.
-    walk(node.left, framePath)
-    walk(node.right, framePath)
+  /**
+   * The recursive walk. `path` is the logical call stack *including* the node being
+   * entered, so the frame list in `aux` is exactly the route from the root.
+   */
+  const walk = (
+    id: NodeId | null,
+    path: readonly NodeId[],
+    direction: 'root' | 'left' | 'right',
+  ): void => {
+    if (id === null) return
+    const node = bstNodeById(tree, id)
+    /* istanbul ignore if — the walk only ever follows ids that resolve. */
+    if (node === undefined) return
+
+    const framePath = [...path, id]
+    const callLine = direction === 'left' ? 5 : direction === 'right' ? 6 : 1
+    const where =
+      direction === 'root'
+        ? 'Start at the root'
+        : direction === 'left'
+          ? 'Go left'
+          : 'Go right'
+
+    record(
+      callLine,
+      `${where}: call preorder(${String(node.value)}) at ${id}.`,
+      id,
+      framePath,
+    )
+
+    // V — visit the node before either subtree, then append it to the output.
+    orderIds.push(id)
+    order.push(node.value)
+    record(
+      4,
+      `Visit ${String(node.value)} — the V of VLR — and append it to output before descending.`,
+      id,
+      framePath,
+    )
+
+    // L then R.
+    walk(node.left, framePath, 'left')
+    walk(node.right, framePath, 'right')
   }
 
   if (tree.root === null) {
@@ -129,10 +166,16 @@ export function preorder(tree: BinarySearchTree): PreorderResult {
         'The tree is empty, so preorder visits nothing. This is the base case.',
       highlight: { nodes: [], edges: [] },
       delta: {},
-      aux: { kind: 'recursion', frames: [], frameIds: [], comparisons: 0 },
+      aux: {
+        kind: 'recursion',
+        frames: [],
+        frameIds: [],
+        output: [],
+        comparisons: 0,
+      },
     })
   } else {
-    walk(tree.root, [])
+    walk(tree.root, [], 'root')
   }
 
   return {

@@ -2,10 +2,10 @@
  * The trace contract — the single module that defines what an algorithm emits and
  * what every panel reads (A2 Listing 17, ADR-6, NFR-M3).
  *
- * ==================== FROZEN · v1.1 (additive over v1) ====================
+ * ==================== FROZEN · v1.2 (additive over v1.1) ====================
  * v1 was frozen when the first vertical slice (linked-list `insertAtHead`) was
  * working, as A2 §5.7 requires: build one slice, freeze the contract, then add
- * structures. v1.1 adds only OPTIONAL fields, exactly the mechanism ADR-8 sets
+ * structures. v1.1/v1.2 add only OPTIONAL fields, exactly the mechanism ADR-8 sets
  * out for "the concrete shapes for `aux` kinds other than none" and for the
  * heap/BST/graph deltas:
  *
@@ -22,10 +22,13 @@
  *   - `AuxState.frameIds`       — the node ids of the live recursion frames, so
  *                                 the recursion panel shows the call PATH and not
  *                                 just its depth.
+ *   - `AuxState.output`         — the values a traversal/extract has produced so
+ *                                 far, so the output sequence is visible as it
+ *                                 grows rather than only in the final summary.
  *
  * Because every addition is optional and no existing generator emits it, the v1
  * golden trace and the shape-lock test are unchanged: a v1 trace is still a valid
- * v1.1 trace. See `ProjectResources/ADR-8-step-contract-freeze.md` for the
+ * v1.2 trace. See `ProjectResources/ADR-8-step-contract-freeze.md` for the
  * decisions and the rationale for each field.
  *
  * The change policy from here:
@@ -159,6 +162,24 @@ export type AuxState = {
    * "the call stack is the route from the root to the current node".
    */
   frameIds?: NodeId[]
+  /**
+   * ADDITIVE (v1.2) — the display values of the live recursion frames, in the
+   * same order as `frameIds`.
+   *
+   * `frameIds` is the stable identity the model needs; `frameValues` is what the
+   * learner reads on the canvas. Keeping both lets the call-stack panel show
+   * `9 → 5 → 3 → 2 → 1` without losing the ids used by rendering and tests.
+   */
+  frameValues?: (string | number)[]
+  /**
+   * ADDITIVE (v1.2) — the values a traversal (or extract) has produced so far.
+   *
+   * `visited` is the node ids the algorithm has finished with; `output` is the
+   * learner-facing result sequence. Keeping both means the tree can colour nodes
+   * by id while the auxiliary panel shows the values being appended, which is the
+   * order the algorithm actually returns.
+   */
+  output?: (string | number)[]
 }
 
 export type Step = {

@@ -376,7 +376,7 @@ project-3-PY/
 │   │       ├── list/       #     insertAtHead.ts insertAt.ts deleteByValue.ts reverse.ts
 │   │       ├── stack/      #     push.ts pop.ts
 │   │       ├── heap/       #     insert.ts extractMin.ts buildHeap.ts
-│   │       ├── bst/        #     insert.ts delete.ts search.ts minMax.ts
+│   │       ├── bst/        #     insert.ts delete.ts search.ts
 │   │       ├── traverse/   #     preorder.ts inorder.ts postorder.ts levelOrder.ts
 │   │       └── graph/      #     bfs.ts dfs.ts
 │   ├── app/                # Layer 3: session controller, state machine, validation,

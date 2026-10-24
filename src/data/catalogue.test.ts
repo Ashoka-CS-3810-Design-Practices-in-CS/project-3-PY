@@ -9,7 +9,6 @@ import { deleteByValue } from '../core/operations/list/deleteByValue'
 import { bstDelete } from '../core/operations/bst/delete'
 import { bstInsert } from '../core/operations/bst/insert'
 import { bstInsertAll } from '../core/operations/bst/insertAll'
-import { bstMinMax } from '../core/operations/bst/minMax'
 import { bstSearch } from '../core/operations/bst/search'
 import { bfs } from '../core/operations/graph/bfs'
 import { graphBuild } from '../core/operations/graph/build'
@@ -92,11 +91,6 @@ const RUNS: { operation: string; allowed: string[]; steps: Step[] }[] = [
     operation: 'bstDelete',
     allowed: ['bstDelete'],
     steps: bstDelete(buildBst([50, 30, 70, 60, 80]), { value: 50 }).trace,
-  },
-  {
-    operation: 'bstMinMax',
-    allowed: ['bstMinMax'],
-    steps: bstMinMax(smallTree).trace,
   },
   {
     operation: 'preorder',
@@ -239,17 +233,36 @@ describe('operation catalogue', () => {
     }
   })
 
-  it('points the three depth-first traversals at their own visit line only', () => {
-    // The visit line is the whole lesson: first for preorder, middle for inorder,
-    // last for postorder. These are the only code lines those traces emit.
-    expect(new Set(preorder(smallTree).trace.map((s) => s.codeLine))).toEqual(
-      new Set([4]),
-    )
-    expect(new Set(inorder(smallTree).trace.map((s) => s.codeLine))).toEqual(
-      new Set([5]),
-    )
-    expect(new Set(postorder(smallTree).trace.map((s) => s.codeLine))).toEqual(
-      new Set([6]),
-    )
+  it('shows the descent calls and the visit line for each DFS traversal', () => {
+    // The visit line is still the lesson: first for preorder, middle for inorder,
+    // last for postorder. The additional call lines are the descent from the root
+    // that learners need in order to follow the recursion.
+    const runs = [
+      {
+        trace: preorder(smallTree).trace,
+        visitLine: 4,
+        order: preorder(smallTree).order,
+      },
+      {
+        trace: inorder(smallTree).trace,
+        visitLine: 5,
+        order: inorder(smallTree).order,
+      },
+      {
+        trace: postorder(smallTree).trace,
+        visitLine: 6,
+        order: postorder(smallTree).order,
+      },
+    ]
+
+    for (const { trace, visitLine, order } of runs) {
+      expect(trace[0].codeLine).toBe(1)
+      expect(new Set(trace.map((step) => step.codeLine))).toEqual(
+        new Set([1, 4, 5, 6]),
+      )
+      const visits = trace.filter((step) => step.codeLine === visitLine)
+      expect(visits).toHaveLength(smallTree.nodes.length)
+      expect(visits[visits.length - 1].aux?.output).toEqual(order)
+    }
   })
 })

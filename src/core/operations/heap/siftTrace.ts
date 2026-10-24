@@ -45,6 +45,8 @@ export type HeapSiftTraceInput = {
   comparisons: number
   /** The word used in narration: `"smaller"` for a min-heap, `"larger"` for a max. */
   preferred: string
+  /** Values already produced by an extraction, shown in the output row. */
+  output?: (string | number)[]
 }
 
 export type HeapSiftTraceResult = {
@@ -85,6 +87,7 @@ export function traceHeapSift(input: HeapSiftTraceInput): HeapSiftTraceResult {
           // The array slot and the tree position are the same index: this is the
           // pair the dual rendering marks in both views at once.
           indices: [event.at, event.against],
+          ...(input.output === undefined ? {} : { output: input.output }),
           comparisons,
         },
       })
@@ -119,6 +122,7 @@ export function traceHeapSift(input: HeapSiftTraceInput): HeapSiftTraceResult {
         kind: 'heap',
         values: heapValues(state),
         indices: [event.a, event.b],
+        ...(input.output === undefined ? {} : { output: input.output }),
         comparisons,
       },
     })

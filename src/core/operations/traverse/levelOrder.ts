@@ -83,6 +83,7 @@ export function levelOrder(tree: BinarySearchTree): LevelOrderResult {
         kind: 'queue',
         values: queueContents(),
         visited: [...orderIds],
+        output: [...order],
         comparisons: 0,
       },
     })
@@ -97,7 +98,13 @@ export function levelOrder(tree: BinarySearchTree): LevelOrderResult {
         'The root is null, so the queue stays empty and there is nothing to visit.',
       highlight: { nodes: [], edges: [] },
       delta: {},
-      aux: { kind: 'queue', values: [], visited: [], comparisons: 0 },
+      aux: {
+        kind: 'queue',
+        values: [],
+        visited: [],
+        output: [],
+        comparisons: 0,
+      },
     })
     return {
       trace: steps,
@@ -138,7 +145,7 @@ export function levelOrder(tree: BinarySearchTree): LevelOrderResult {
     // the state the learner is looking at when the visit happens.
     record(
       6,
-      `Dequeue ${current} and visit ${String(node.value)} — the first node enqueued is the first visited (FIFO).`,
+      `Dequeue ${current} and visit ${String(node.value)} — append it to output; the first node enqueued is the first visited (FIFO).`,
       current,
     )
 

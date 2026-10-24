@@ -14,10 +14,10 @@
  * RULES
  *   React owns every SVG element; D3 is not used here at all — the coordinates
  *   come from `render/layout/scales` (`ADR-2`). The component receives the state
- *   and the step, and never owns the step index or a timer. Every node also carries
- *   a text state label, so colour is never the only signal (`NFR-U2`). Colours come
- *   from the design tokens in `src/index.css` via `var(--color-*)`, never from
- *   literal hex.
+ *   and the step, and never owns the step index or a timer. The node value is the
+ *   only text drawn inside a node; state comes from fill, the active ring, the
+ *   legend and the accessible `<title>` (`NFR-U2`). Colours come from the design
+ *   tokens in `src/index.css` via `var(--color-*)`, never from literal hex.
  */
 
 import {
@@ -48,6 +48,13 @@ const NODE_INK = {
 /* Non-text graphics only need 3:1 (WCAG 1.4.11); `subtle` gives 5.81:1. */
 const EDGE = 'var(--color-subtle)'
 const EDGE_ACTIVE = 'var(--color-accent)'
+
+/** Long values get a smaller face so they stay inside the circle. */
+function valueFontSize(value: unknown, base: number): number {
+  const length = String(value).length
+  if (length <= 2) return base
+  return length === 3 ? base - 2 : base - 4
+}
 
 export function ListRenderer({ state, step }: ListRendererProps) {
   const radius = LIST_LAYOUT.nodeRadius
@@ -189,19 +196,11 @@ export function ListRenderer({ state, step }: ListRendererProps) {
             <text
               textAnchor="middle"
               dominantBaseline="central"
-              fontSize="15"
+              fontSize={valueFontSize(node.value, 15)}
               fontWeight="600"
               fill={NODE_INK[kind]}
             >
               {String(node.value)}
-            </text>
-            <text
-              y={radius + 15}
-              textAnchor="middle"
-              fontSize="10"
-              fill="var(--color-muted)"
-            >
-              {node.id} · {stateLabel}
             </text>
           </g>
         )

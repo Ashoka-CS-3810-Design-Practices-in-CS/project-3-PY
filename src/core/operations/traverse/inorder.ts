@@ -70,25 +70,17 @@ export function inorder(tree: BinarySearchTree): InorderResult {
     return edges
   }
 
-  const walk = (id: NodeId | null, path: readonly NodeId[]): void => {
-    if (id === null) return
-    const node = bstNodeById(tree, id)
-    /* istanbul ignore if — the walk only ever follows ids that resolve. */
-    if (node === undefined) return
-
-    const framePath = [...path, id]
-
-    // VISIT-BETWEEN: descend left first…
-    walk(node.left, framePath)
-
-    orderIds.push(id)
-    order.push(node.value)
-
+  const record = (
+    codeLine: number,
+    narration: string,
+    id: NodeId,
+    framePath: readonly NodeId[],
+  ): void => {
     steps.push({
       index: steps.length,
       operation: OPERATION_ID,
-      codeLine: 5,
-      narration: `Visit ${String(node.value)} at ${id} — after its left subtree, before its right. Call stack: ${framePath.join(' → ')}.`,
+      codeLine,
+      narration,
       highlight: {
         nodes: [...orderIds],
         active: id,
@@ -98,17 +90,63 @@ export function inorder(tree: BinarySearchTree): InorderResult {
       aux: {
         kind: 'recursion',
         frames: framePath.map((_, depth) => depth),
-        frameIds: framePath,
+        frameIds: [...framePath],
+        frameValues: framePath.map(
+          (frameId) => bstNodeById(tree, frameId)?.value ?? frameId,
+        ),
         // The visit order so far — the inorder output, which the tree renderer
         // colours as visited nodes (`aux.visited`, FR10).
         visited: [...orderIds],
+        // The learner-facing output sequence, shown while it grows.
+        output: [...order],
         comparisons: 0,
       },
     })
+  }
 
-    // …then the right subtree. Swapping these two blocks would produce preorder
-    // or postorder instead, which is exactly what the three files demonstrate.
-    walk(node.right, framePath)
+  const walk = (
+    id: NodeId | null,
+    path: readonly NodeId[],
+    direction: 'root' | 'left' | 'right',
+  ): void => {
+    if (id === null) return
+    const node = bstNodeById(tree, id)
+    /* istanbul ignore if — the walk only ever follows ids that resolve. */
+    if (node === undefined) return
+
+    const framePath = [...path, id]
+    const callLine = direction === 'left' ? 4 : direction === 'right' ? 6 : 1
+    const where =
+      direction === 'root'
+        ? 'Start at the root'
+        : direction === 'left'
+          ? 'Go left'
+          : 'Go right'
+
+    // Line 1 / 4 / 6 — enter the call. This is the descent learners need to see
+    // before the first value can be output.
+    record(
+      callLine,
+      `${where}: call inorder(${String(node.value)}) at ${id}.`,
+      id,
+      framePath,
+    )
+
+    // L — exhaust the left subtree first.
+    walk(node.left, framePath, 'left')
+
+    // D — the left subtree is complete, so this node is the next output value.
+    orderIds.push(id)
+    order.push(node.value)
+    record(
+      5,
+      `The left subtree of ${id} is complete, so visit ${String(node.value)} — the D of LDR — and append it to output.`,
+      id,
+      framePath,
+    )
+
+    // R — then the right subtree.
+    walk(node.right, framePath, 'right')
   }
 
   if (tree.root === null) {
@@ -120,10 +158,16 @@ export function inorder(tree: BinarySearchTree): InorderResult {
         'The tree is empty, so inorder visits nothing. This is the base case.',
       highlight: { nodes: [], edges: [] },
       delta: {},
-      aux: { kind: 'recursion', frames: [], frameIds: [], comparisons: 0 },
+      aux: {
+        kind: 'recursion',
+        frames: [],
+        frameIds: [],
+        output: [],
+        comparisons: 0,
+      },
     })
   } else {
-    walk(tree.root, [])
+    walk(tree.root, [], 'root')
   }
 
   // "Sorted" is checked with the same total order the BST uses, not with JS `<`,

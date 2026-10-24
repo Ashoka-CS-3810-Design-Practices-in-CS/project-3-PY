@@ -113,7 +113,13 @@ describe('heapExtractMin', () => {
     )
     expect(extracted?.value).toBe(7)
     expect(finalState.entries).toHaveLength(0)
-    expect(trace.map((step) => step.codeLine)).toEqual([3, 4, 15])
+    // Read root, publish it as the output, then remove it.
+    expect(trace.map((step) => step.codeLine)).toEqual([3, 3, 4, 15])
+    const outputStep = trace.find((step) =>
+      step.narration.startsWith('Extract-min:'),
+    )
+    expect(outputStep?.delta).toEqual({})
+    expect(outputStep?.aux?.output).toEqual([7])
   })
 
   it('matches the model reference for one extract', () => {
@@ -134,8 +140,12 @@ describe('heapExtractMin', () => {
 
 describe('heapExtractMax', () => {
   it('returns the maximum and restores the heap', () => {
-    const { extracted, finalState } = heapExtractMax(maxHeapOf(RAW))
+    const { trace, extracted, finalState } = heapExtractMax(maxHeapOf(RAW))
     expect(extracted?.value).toBe(9)
+    expect(
+      trace.find((step) => step.narration.startsWith('Extract-max:'))?.aux
+        ?.output,
+    ).toEqual([9])
     assertHeap(finalState)
   })
 

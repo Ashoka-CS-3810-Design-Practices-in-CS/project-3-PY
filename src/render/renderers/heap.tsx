@@ -49,6 +49,13 @@ function parentIndex(index: number): number {
   return Math.floor((index - 1) / 2)
 }
 
+/** Long values get a smaller face so they stay inside the circle. */
+function valueFontSize(value: unknown, base: number): number {
+  const length = String(value).length
+  if (length <= 2) return base
+  return length === 3 ? base - 2 : base - 4
+}
+
 /** Trims a line to a circle's edge. */
 function segment(from: Point, to: Point, radius: number) {
   const dx = to.x - from.x
@@ -69,12 +76,18 @@ export function HeapRenderer({ state, step }: HeapRendererProps) {
   const highlightedIds = step?.highlight.nodes ?? []
   const activeId = step?.highlight.active
 
-  const treePoints = layoutHeapTree(entries.length)
-  const arrayPoints = layoutColumns(entries.length, HEAP_LAYOUT.arrayY)
+  const treeLayout = layoutHeapTree(entries.length)
+  const treePoints = treeLayout.positions
+  const arrayPoints = layoutColumns(
+    entries.length,
+    treeLayout.arrayY,
+    treeLayout.width,
+    HEAP_LAYOUT.margin,
+  )
   const spacing =
     arrayPoints.length > 1
       ? arrayPoints[1].x - arrayPoints[0].x
-      : HEAP_LAYOUT.width / 2
+      : treeLayout.width / 2
   const cellWidth = Math.max(22, Math.min(46, spacing - 6))
 
   const kindFor = (index: number, id: string): keyof typeof NODE_FILL => {
@@ -85,7 +98,7 @@ export function HeapRenderer({ state, step }: HeapRendererProps) {
 
   return (
     <svg
-      viewBox={`0 0 ${HEAP_LAYOUT.width} ${HEAP_LAYOUT.height}`}
+      viewBox={`0 0 ${treeLayout.width} ${treeLayout.height}`}
       className="h-auto w-full"
       role="img"
       aria-label={`${state.kind}-heap with ${entries.length} entr(ies), drawn as an array and as a tree`}
@@ -133,19 +146,11 @@ export function HeapRenderer({ state, step }: HeapRendererProps) {
             <text
               textAnchor="middle"
               dominantBaseline="central"
-              fontSize="13"
+              fontSize={valueFontSize(entry.value, 13)}
               fontWeight="600"
               fill={NODE_INK[kind]}
             >
               {String(entry.value)}
-            </text>
-            <text
-              y={radius + 12}
-              textAnchor="middle"
-              fontSize="9"
-              fill="var(--color-muted)"
-            >
-              {index}
             </text>
           </g>
         )
@@ -154,15 +159,15 @@ export function HeapRenderer({ state, step }: HeapRendererProps) {
       {/* Array separator + label. */}
       <line
         x1={0}
-        y1={HEAP_LAYOUT.arrayY - HEAP_LAYOUT.cellHeight}
-        x2={HEAP_LAYOUT.width}
-        y2={HEAP_LAYOUT.arrayY - HEAP_LAYOUT.cellHeight}
+        y1={treeLayout.arrayY - HEAP_LAYOUT.cellHeight}
+        x2={treeLayout.width}
+        y2={treeLayout.arrayY - HEAP_LAYOUT.cellHeight}
         stroke="var(--color-line)"
         strokeWidth={1}
       />
       <text
         x={HEAP_LAYOUT.margin}
-        y={HEAP_LAYOUT.arrayY - HEAP_LAYOUT.cellHeight - 6}
+        y={treeLayout.arrayY - HEAP_LAYOUT.cellHeight - 6}
         fontSize="10"
         fill="var(--color-muted)"
       >
@@ -193,7 +198,7 @@ export function HeapRenderer({ state, step }: HeapRendererProps) {
             <text
               textAnchor="middle"
               dominantBaseline="central"
-              fontSize="13"
+              fontSize={valueFontSize(entry.value, 13)}
               fontWeight="600"
               fill={NODE_INK[kind]}
             >

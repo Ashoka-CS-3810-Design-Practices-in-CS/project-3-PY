@@ -21,9 +21,13 @@ describe('depth-first traversals', () => {
 
     expect(order).toEqual([50, 30, 20, 40, 70, 60, 80])
     expect(orderIds).toEqual(preorderNodeIds(tree))
-    expect(trace).toHaveLength(7)
+    // One call/enter step and one visit step per node.
+    expect(trace).toHaveLength(14)
+    expect(trace[0].codeLine).toBe(1)
     // `output.append(node.value)` is line 4 of the pure listing.
-    expect(trace.every((step) => step.codeLine === 4)).toBe(true)
+    const visits = trace.filter((step) => step.codeLine === 4)
+    expect(visits).toHaveLength(7)
+    expect(visits[visits.length - 1].aux?.output).toEqual(order)
     expect(trace.every((step) => step.operation === 'preorder')).toBe(true)
   })
 
@@ -33,8 +37,12 @@ describe('depth-first traversals', () => {
     expect(order).toEqual([20, 30, 40, 50, 60, 70, 80])
     expect(orderIds).toEqual(inorderNodeIds(tree))
     expect([...order].sort((a, b) => Number(a) - Number(b))).toEqual(order)
-    // The visit sits between the two recursive calls: line 5.
-    expect(trace.every((step) => step.codeLine === 5)).toBe(true)
+    // Descend left first, then the D visit sits between the recursive calls.
+    expect(trace[0].codeLine).toBe(1)
+    expect(trace[1].codeLine).toBe(4)
+    const visits = trace.filter((step) => step.codeLine === 5)
+    expect(visits).toHaveLength(7)
+    expect(visits[visits.length - 1].aux?.output).toEqual(order)
   })
 
   it('postorder visits the node after both children, so the root is last', () => {
@@ -44,18 +52,23 @@ describe('depth-first traversals', () => {
     expect(orderIds).toEqual(postorderNodeIds(tree))
     expect(orderIds[orderIds.length - 1]).toBe(tree.root)
     // The visit comes last: line 6.
-    expect(trace.every((step) => step.codeLine === 6)).toBe(true)
+    const visits = trace.filter((step) => step.codeLine === 6)
+    expect(visits).toHaveLength(7)
+    expect(visits[visits.length - 1].aux?.output).toEqual(order)
   })
 
-  it('carries the live call stack in aux (recursion panel data)', () => {
+  it('carries the live call stack and output in aux (recursion panel data)', () => {
     const { trace } = preorder(tree)
-    // The first visit is the root, at depth 0, with a one-frame stack.
+    // The first call is the root, at depth 0, with a one-frame stack.
     expect(trace[0].aux?.kind).toBe('recursion')
     expect(trace[0].aux?.frames).toEqual([0])
     expect(trace[0].aux?.frameIds).toEqual(['n1'])
+    expect(trace[0].aux?.frameValues).toEqual([50])
+    expect(trace[0].aux?.output).toEqual([])
     // The visit of 20 (n4) is three frames deep: 50 → 30 → 20.
     const deep = trace.find((step) => step.highlight.active === 'n4')
     expect(deep?.aux?.frameIds).toEqual(['n1', 'n2', 'n4'])
+    expect(deep?.aux?.frameValues).toEqual([50, 30, 20])
     expect(deep?.aux?.frames).toEqual([0, 1, 2])
   })
 
@@ -107,12 +120,13 @@ describe('levelOrder', () => {
     expect(summary.steps).toBeGreaterThan(order.length)
   })
 
-  it('shows the live queue in aux after every action', () => {
-    const { trace } = levelOrder(tree)
+  it('shows the live queue and the growing output after every action', () => {
+    const { trace, order } = levelOrder(tree)
 
     expect(trace[0].codeLine).toBe(3)
     expect(trace[0].aux?.kind).toBe('queue')
     expect(trace[0].aux?.values).toEqual(['n1'])
+    expect(trace[0].aux?.output).toEqual([])
 
     // After dequeuing the root and enqueuing both children, the queue is [n2, n3].
     const afterChildren = trace.find(
@@ -120,8 +134,11 @@ describe('levelOrder', () => {
     )
     expect(afterChildren?.aux?.values).toEqual(['n2', 'n3'])
     expect(afterChildren?.aux?.visited).toEqual(['n1'])
+    expect(afterChildren?.aux?.output).toEqual([50])
 
-    // Every step carries a queue and a growing visited list.
+    expect(trace[trace.length - 1].aux?.output).toEqual(order)
+
+    // Every step carries a queue and a growing output list.
     expect(trace.every((step) => step.aux?.kind === 'queue')).toBe(true)
   })
 

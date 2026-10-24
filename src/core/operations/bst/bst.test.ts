@@ -8,7 +8,6 @@ import {
 } from '../../model/bst'
 import { bstDelete } from './delete'
 import { bstInsert } from './insert'
-import { bstMinMax } from './minMax'
 import { bstSearch } from './search'
 
 // Part of `npm run test:core`: no DOM, no React, no D3 (NFR-M2, NFR-M3).
@@ -121,28 +120,6 @@ describe('bstSearch', () => {
     expect(JSON.stringify(bstSearch(tree, { value: 60 }).trace)).toBe(
       JSON.stringify(bstSearch(tree, { value: 60 }).trace),
     )
-  })
-})
-
-describe('bstMinMax', () => {
-  it('walks left for the minimum and right for the maximum', () => {
-    const { trace, minId, maxId, finalState } = bstMinMax(buildBst(VALUES))
-
-    expect(minId).toBe('n4')
-    expect(maxId).toBe('n7')
-    expect(trace.some((step) => step.codeLine === 5)).toBe(true)
-    expect(trace.some((step) => step.codeLine === 10)).toBe(true)
-    expect(trace[trace.length - 1].codeLine).toBe(12)
-    expect(trace[trace.length - 1].narration).toContain('Minimum is 20')
-    expect(valuesInOrder(finalState)).toEqual([20, 30, 40, 50, 60, 70, 80])
-  })
-
-  it('handles the empty tree in one step', () => {
-    const { trace, minId, maxId } = bstMinMax(buildBst([]))
-    expect(trace).toHaveLength(1)
-    expect(trace[0].codeLine).toBe(12)
-    expect(minId).toBeNull()
-    expect(maxId).toBeNull()
   })
 })
 

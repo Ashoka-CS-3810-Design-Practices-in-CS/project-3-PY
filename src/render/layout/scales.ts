@@ -90,8 +90,8 @@ export function layoutRow(
 export function layoutColumns(
   count: number,
   y: number,
-  width = LIST_LAYOUT.width,
-  margin = LIST_LAYOUT.margin,
+  width: number = LIST_LAYOUT.width,
+  margin: number = LIST_LAYOUT.margin,
 ): Point[] {
   if (count <= 0) return []
   if (count === 1) return [{ x: Math.round(width / 2), y }]

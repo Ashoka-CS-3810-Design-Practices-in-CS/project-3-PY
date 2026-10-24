@@ -70,26 +70,17 @@ export function postorder(tree: BinarySearchTree): PostorderResult {
     return edges
   }
 
-  const walk = (id: NodeId | null, path: readonly NodeId[]): void => {
-    if (id === null) return
-    const node = bstNodeById(tree, id)
-    /* istanbul ignore if — the walk only ever follows ids that resolve. */
-    if (node === undefined) return
-
-    const framePath = [...path, id]
-
-    // VISIT-LAST: both subtrees are finished before the node is emitted.
-    walk(node.left, framePath)
-    walk(node.right, framePath)
-
-    orderIds.push(id)
-    order.push(node.value)
-
+  const record = (
+    codeLine: number,
+    narration: string,
+    id: NodeId,
+    framePath: readonly NodeId[],
+  ): void => {
     steps.push({
       index: steps.length,
       operation: OPERATION_ID,
-      codeLine: 6,
-      narration: `Visit ${String(node.value)} at ${id} — both children are done, so this node can now be released or evaluated. Call stack: ${framePath.join(' → ')}.`,
+      codeLine,
+      narration,
       highlight: {
         nodes: [...orderIds],
         active: id,
@@ -99,13 +90,58 @@ export function postorder(tree: BinarySearchTree): PostorderResult {
       aux: {
         kind: 'recursion',
         frames: framePath.map((_, depth) => depth),
-        frameIds: framePath,
+        frameIds: [...framePath],
+        frameValues: framePath.map(
+          (frameId) => bstNodeById(tree, frameId)?.value ?? frameId,
+        ),
         // The visit order so far; postorder only adds a node after its subtrees,
         // so this grows bottom-up (FR10).
         visited: [...orderIds],
+        // The learner-facing output sequence, shown while it grows.
+        output: [...order],
         comparisons: 0,
       },
     })
+  }
+
+  const walk = (
+    id: NodeId | null,
+    path: readonly NodeId[],
+    direction: 'root' | 'left' | 'right',
+  ): void => {
+    if (id === null) return
+    const node = bstNodeById(tree, id)
+    /* istanbul ignore if — the walk only ever follows ids that resolve. */
+    if (node === undefined) return
+
+    const framePath = [...path, id]
+    const callLine = direction === 'left' ? 4 : direction === 'right' ? 5 : 1
+    const where =
+      direction === 'root'
+        ? 'Start at the root'
+        : direction === 'left'
+          ? 'Go left'
+          : 'Go right'
+
+    record(
+      callLine,
+      `${where}: call postorder(${String(node.value)}) at ${id}.`,
+      id,
+      framePath,
+    )
+
+    // L then R — both subtrees must finish before the node can be output.
+    walk(node.left, framePath, 'left')
+    walk(node.right, framePath, 'right')
+
+    orderIds.push(id)
+    order.push(node.value)
+    record(
+      6,
+      `Both subtrees of ${id} are complete, so visit ${String(node.value)} — the D of LRD — and append it to output.`,
+      id,
+      framePath,
+    )
   }
 
   if (tree.root === null) {
@@ -117,10 +153,16 @@ export function postorder(tree: BinarySearchTree): PostorderResult {
         'The tree is empty, so postorder visits nothing. This is the base case.',
       highlight: { nodes: [], edges: [] },
       delta: {},
-      aux: { kind: 'recursion', frames: [], frameIds: [], comparisons: 0 },
+      aux: {
+        kind: 'recursion',
+        frames: [],
+        frameIds: [],
+        output: [],
+        comparisons: 0,
+      },
     })
   } else {
-    walk(tree.root, [])
+    walk(tree.root, [], 'root')
   }
 
   const rootVisitedLast =

@@ -55,7 +55,10 @@ export function AuxStatePane({ aux, hasStep }: AuxStatePaneProps) {
           container to show.
         </p>
       ) : (
-        <AuxView aux={aux} />
+        <>
+          <AuxView aux={aux} />
+          {aux.output !== undefined && <Output values={aux.output} />}
+        </>
       )}
 
       {aux !== undefined && (
@@ -123,9 +126,9 @@ function AuxView({ aux }: { aux: AuxState }) {
                   key={`${depth}-${id}`}
                   className="rounded border border-raised bg-base-deep px-2 py-0.5 font-mono text-xs text-ink"
                 >
-                  {id}
+                  {aux.frameValues?.[depth] ?? id}
                   <span className="ml-1 text-[10px] text-muted">
-                    d{aux.frames?.[depth] ?? depth}
+                    {id} d{aux.frames?.[depth] ?? depth}
                   </span>
                 </li>
               ))}
@@ -176,6 +179,18 @@ function ChipRow({
         )
       })}
     </ul>
+  )
+}
+
+/** The traversal/extract result so far, rendered as a growing value sequence. */
+function Output({ values }: { values: readonly (string | number)[] }) {
+  return (
+    <div className="mt-2 border-t border-line pt-2">
+      <p className="mb-1 text-xs font-semibold tracking-wide text-muted uppercase">
+        output
+      </p>
+      <ChipRow values={values} />
+    </div>
   )
 }
 

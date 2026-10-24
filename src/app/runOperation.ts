@@ -37,7 +37,6 @@ import { buildList } from '../core/model/linkedList'
 import { bstDelete } from '../core/operations/bst/delete'
 import { bstInsert } from '../core/operations/bst/insert'
 import { bstInsertAll } from '../core/operations/bst/insertAll'
-import { bstMinMax } from '../core/operations/bst/minMax'
 import { bstSearch } from '../core/operations/bst/search'
 import { concatSteps } from '../core/operations/compose'
 import { bfs } from '../core/operations/graph/bfs'
@@ -219,12 +218,21 @@ export function runOperation(request: RunRequest): RunOutcome {
       return finish(report, verticesOnly, [build])
     }
 
-    const source = String(sourceReport.accepted[0])
+    // BFS/DFS are shown over the finished graph: pressing Visualise loads the
+    // whole drawing, and the first traversal step is where playback begins. The
+    // edge-by-edge build stays available as its own operation.
+    const sourceLabel = String(sourceReport.accepted[0])
+    // Validation accepts the label the user typed (`A`); the traversal model is
+    // keyed by the vertex id (`v1`), so translate once here.
+    const sourceVertex = build.finalState.vertices.find(
+      (vertex) => vertex.label === sourceLabel,
+    )
+    const source = sourceVertex?.id ?? sourceLabel
     const traversal =
       request.operationId === 'dfs'
         ? dfs(build.finalState, { source })
         : bfs(build.finalState, { source })
-    return finish(report, verticesOnly, [build, traversal])
+    return finish(report, build.finalState, [traversal])
   }
 
   // -------------------------------------------------------- value-list pipeline
@@ -274,7 +282,6 @@ export function runOperation(request: RunRequest): RunOutcome {
     case 'bstInsert':
     case 'bstDelete':
     case 'bstSearch':
-    case 'bstMinMax':
     case 'preorder':
     case 'inorder':
     case 'postorder':
@@ -288,16 +295,28 @@ export function runOperation(request: RunRequest): RunOutcome {
             ? bstDelete(tree, { value })
             : request.operationId === 'bstSearch'
               ? bstSearch(tree, { value })
-              : request.operationId === 'bstMinMax'
-                ? bstMinMax(tree)
-                : request.operationId === 'preorder'
-                  ? preorder(tree)
-                  : request.operationId === 'inorder'
-                    ? inorder(tree)
-                    : request.operationId === 'postorder'
-                      ? postorder(tree)
-                      : levelOrder(tree)
-      return finish(report, EMPTY_BST, [build, operation])
+              : request.operationId === 'preorder'
+                ? preorder(tree)
+                : request.operationId === 'inorder'
+                  ? inorder(tree)
+                  : request.operationId === 'postorder'
+                    ? postorder(tree)
+                    : levelOrder(tree)
+
+      // Search and traversals are shown over the finished tree: Visualise loads
+      // every node and the selected pseudocode, then Next/Play runs the
+      // operation. Insert and delete keep the insert-by-insert build phase
+      // because the build is part of their lesson.
+      const isPrebuilt =
+        request.operationId === 'bstSearch' ||
+        request.operationId === 'preorder' ||
+        request.operationId === 'inorder' ||
+        request.operationId === 'postorder' ||
+        request.operationId === 'levelOrder'
+
+      return isPrebuilt
+        ? finish(report, tree, [operation])
+        : finish(report, EMPTY_BST, [build, operation])
     }
 
     // ------------------------------------------------------------------ heap

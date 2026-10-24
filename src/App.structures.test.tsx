@@ -49,7 +49,7 @@ describe('App — non-list structures', () => {
     ).toBeGreaterThan(0)
   })
 
-  it('builds the BST by inserts, then runs inorder (code panel switches phase)', async () => {
+  it('loads the pre-built BST, then runs inorder over it', async () => {
     const user = userEvent.setup()
     render(<App />)
     await screen.findByText(/Step 1 of 4\./)
@@ -59,22 +59,44 @@ describe('App — non-list structures', () => {
     await user.click(screen.getByRole('button', { name: 'Visualise' }))
 
     expect(await screen.findByText(/Step 1 of \d+\./)).toBeInTheDocument()
-    // Phase 1: the insert listing is highlighted while the tree is built.
-    expect(screen.getByText(/Pseudocode · Insert$/)).toBeInTheDocument()
+    // Visualise loads the finished tree and the traversal listing; there is no
+    // insert-by-insert build phase to step through first.
+    expect(
+      screen.getByText(/Pseudocode · Inorder traversal/),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('img', { name: /Binary search tree with 17 node/ }),
+    ).toBeInTheDocument()
+    // The auxiliary pane exposes the growing traversal output.
+    expect(screen.getByText('output')).toBeInTheDocument()
 
-    // Phase 2: the traversal, over the fully built tree.
     seekToEnd()
     expect(
       screen.getByText(/Pseudocode · Inorder traversal/),
     ).toBeInTheDocument()
     const pane = screen.getByLabelText('Pseudocode')
     expect(pane.textContent).toContain('function inorder')
+  })
+
+  it('loads the pre-built BST before searching', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText(/Step 1 of 4\./)
+
+    await user.click(screen.getByRole('button', { name: 'Binary search tree' }))
+    await user.click(screen.getByRole('button', { name: 'Search' }))
+    await user.click(screen.getByRole('button', { name: 'Visualise' }))
+
+    expect(await screen.findByText(/Step 1 of \d+\./)).toBeInTheDocument()
+    // Search starts against the already-built tree, so its own listing is shown
+    // from the first step — no insert-by-insert phase first.
+    expect(screen.getByText(/Pseudocode · Search/)).toBeInTheDocument()
     expect(
       screen.getByRole('img', { name: /Binary search tree with 17 node/ }),
     ).toBeInTheDocument()
   })
 
-  it('adds graph edges one at a time, then shows the BFS frontier', async () => {
+  it('loads the pre-drawn graph, then shows the BFS frontier', async () => {
     const user = userEvent.setup()
     render(<App />)
     await screen.findByText(/Step 1 of 4\./)
@@ -83,16 +105,17 @@ describe('App — non-list structures', () => {
     await user.click(screen.getByRole('button', { name: 'Visualise' }))
 
     expect(await screen.findByText(/Step 1 of \d+\./)).toBeInTheDocument()
-    expect(
-      screen.getByText(/Pseudocode · Add edges one by one/),
-    ).toBeInTheDocument()
-
-    seekToEnd()
+    // The complete graph is already drawn when the traversal starts.
     expect(
       screen.getByText(/Pseudocode · Breadth-first search/),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('img', { name: /Graph with 16 vertices/ }),
+    ).toBeInTheDocument()
+
+    seekToEnd()
+    expect(
+      screen.getByText(/Pseudocode · Breadth-first search/),
     ).toBeInTheDocument()
     expect(screen.getAllByText(/queue \(front first\)/).length).toBeGreaterThan(
       0,

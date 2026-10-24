@@ -57,7 +57,7 @@ describe('runOperation — the generic request pipeline', () => {
     expect(outcome.input.steps).toHaveLength(4)
   })
 
-  it('builds the BST by inserting one value at a time, then searches', () => {
+  it('loads the BST first, then searches it without an insert phase', () => {
     const outcome = runOperation({
       structureId: 'bst',
       operationId: 'bstSearch',
@@ -68,16 +68,21 @@ describe('runOperation — the generic request pipeline', () => {
     expect(outcome.ok).toBe(true)
     if (!outcome.ok) return
 
-    // The trace starts from an empty tree and inserts each value in turn, so the
-    // first step is an insert and its narration names the value and progress.
-    expect((outcome.input.initial as BinarySearchTree).root).toBeNull()
-    expect(outcome.input.steps[0].operation).toBe('bstInsert')
-    expect(outcome.input.steps[0].narration).toContain('Inserting 50 (1 of 4)')
+    // Visualise loads the finished tree; the trace contains only the search, so
+    // the search pseudocode is live from step 1.
+    const initial = outcome.input.initial as BinarySearchTree
+    expect(initial.root).not.toBeNull()
+    expect(initial.nodes).toHaveLength(4)
+    expect(valuesInOrder(initial)).toEqual([30, 45, 50, 70])
     expect(
-      outcome.input.steps.some((step) => step.operation === 'bstSearch'),
+      outcome.input.steps.some((step) => step.operation === 'bstInsert'),
+    ).toBe(false)
+    expect(outcome.input.steps[0].operation).toBe('bstSearch')
+    expect(
+      outcome.input.steps.every((step) => step.operation === 'bstSearch'),
     ).toBe(true)
 
-    // Replaying the composed deltas lands on the full, sorted tree.
+    // Replaying the search-only trace lands on the same tree.
     expect(
       valuesInOrder(finalModel(outcome.input) as BinarySearchTree),
     ).toEqual([30, 45, 50, 70])
@@ -101,7 +106,7 @@ describe('runOperation — the generic request pipeline', () => {
     ).toEqual([5, 10])
   })
 
-  it('runs inorder after building the tree, switching operation mid-trace', () => {
+  it('runs inorder over the pre-built tree, with no insert phase', () => {
     const outcome = runOperation({
       structureId: 'bst',
       operationId: 'inorder',
@@ -110,13 +115,22 @@ describe('runOperation — the generic request pipeline', () => {
 
     expect(outcome.ok).toBe(true)
     if (!outcome.ok) return
-    // Two phases: insert steps first, then exactly one visit step per node.
+    // The trace is the traversal only: Visualise loads the finished tree, then
+    // Next/Play walks the visit order.
+    const initial = outcome.input.initial as BinarySearchTree
+    expect(initial.nodes).toHaveLength(3)
     expect(
       outcome.input.steps.some((step) => step.operation === 'bstInsert'),
-    ).toBe(true)
+    ).toBe(false)
     expect(
-      outcome.input.steps.filter((step) => step.operation === 'inorder'),
-    ).toHaveLength(3)
+      outcome.input.steps.every((step) => step.operation === 'inorder'),
+    ).toBe(true)
+    // Three enter/call steps plus three D-visits (the output line).
+    expect(outcome.input.steps).toHaveLength(6)
+    const visits = outcome.input.steps.filter((step) => step.codeLine === 5)
+    expect(visits).toHaveLength(3)
+    expect(outcome.input.steps[0].aux?.output).toEqual([])
+    expect(visits[2].aux?.output).toEqual([30, 50, 70])
     expect(
       valuesInOrder(finalModel(outcome.input) as BinarySearchTree),
     ).toEqual([30, 50, 70])
@@ -186,7 +200,7 @@ describe('runOperation — the generic request pipeline', () => {
     expect(heapValues(final)).toHaveLength(3)
   })
 
-  it('runs BFS and DFS after adding the edges one at a time', () => {
+  it('runs BFS and DFS over the pre-drawn graph, with no build phase', () => {
     const { edgesText, sourceText } = graphPreset()
     const breadth = runOperation({
       structureId: 'graph',
@@ -205,15 +219,22 @@ describe('runOperation — the generic request pipeline', () => {
     expect(depth.ok).toBe(true)
     if (!breadth.ok || !depth.ok) return
 
-    // Phase 1: vertices exist but no edge does yet; phase 2 traverses.
-    expect((breadth.input.initial as GraphModel).vertices).toHaveLength(16)
-    expect(graphEdges(breadth.input.initial as GraphModel)).toHaveLength(0)
+    // Visualise loads the complete graph; the trace contains only the traversal,
+    // so the first step already has the whole drawing behind it.
+    const initial = breadth.input.initial as GraphModel
+    expect(initial.vertices).toHaveLength(16)
+    expect(graphEdges(initial)).toHaveLength(20)
     expect(
       breadth.input.steps.some((step) => step.operation === 'graphBuild'),
-    ).toBe(true)
-    expect(breadth.input.steps.some((step) => step.operation === 'bfs')).toBe(
+    ).toBe(false)
+    expect(breadth.input.steps[0].operation).toBe('bfs')
+    expect(breadth.input.steps.every((step) => step.operation === 'bfs')).toBe(
       true,
     )
+    // A real traversal, not the "source is not a vertex" degenerate trace: the
+    // typed label A must resolve to the model id used by the adjacency list.
+    expect(breadth.input.steps.length).toBeGreaterThan(16)
+    expect(breadth.input.steps[0].narration).not.toContain('not a vertex')
     expect(graphEdges(finalModel(breadth.input) as GraphModel)).toHaveLength(20)
 
     // The same source, two different orders — the whole point of the lesson.
