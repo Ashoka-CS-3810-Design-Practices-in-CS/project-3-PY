@@ -1,4 +1,3 @@
-
 import { describe, expect, it } from 'vitest'
 import { buildList, orderFromHead, valuesInOrder } from '../../model/linkedList'
 import { deleteByValue } from './deleteByValue'
@@ -21,9 +20,7 @@ describe('deleteByValue', () => {
 
     expect(valuesInOrder(finalState)).toEqual([50, 70])
     expect(orderFromHead(finalState)).toEqual(['n1', 'n3'])
-    expect(finalState.links).toEqual([
-      { from: 'n1', to: 'n3', kind: 'next' },
-    ])
+    expect(finalState.links).toEqual([{ from: 'n1', to: 'n3', kind: 'next' }])
   })
 
   it('deletes the last node', () => {

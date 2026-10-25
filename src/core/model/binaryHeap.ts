@@ -14,7 +14,7 @@
  *   visible `Step`s, so the picture and the algorithm cannot disagree.
  *
  * WHY THIS FILE EXISTS
- *   The priority queue is a first-class graded structure (ADR-5) and the one model
+ *   The priority queue is a first-class catalogue structure (ADR-5) and the one model
  *   with "one model, two honest renderings": the same array is drawn as an indexed
  *   array and as a complete binary tree, which is what lets the O(n) build-heap
  *   and the O(n log n) of n successive inserts be compared on one input (A2 §4.3).

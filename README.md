@@ -1,23 +1,22 @@
 # Project 3 — Interactive Data Structure and Algorithms Visualizer
 
-An interactive, browser-based visualiser for the five graded data structures — linked lists,
-stacks, priority queues, trees, and graphs — with step-by-step algorithm execution,
-synchronised pseudocode, live auxiliary state, and complexity information.
+An interactive, browser-based visualiser for linked lists, stacks, priority queues, trees, and
+graphs — with step-by-step algorithm execution, synchronised pseudocode, live auxiliary state,
+and complexity information.
 
 Built for **CS-3810: Design Practices in Computer Science**, Assignments 1 and 2 / Project 3,
 Department of Computer Science, Ashoka University.
 
-> **Status:** scaffold in place, feature implementation not yet started. The repository holds this
-> README, the assignment resources, the engineering setup guide, and the Vite + React + TypeScript
-> scaffold it describes — Tailwind v4, the D3 submodules, TypeScript strict mode, the Vitest
-> suites, the import-boundary lint rule and CI. The setup guide, including the rationale for each
-> choice, is [`ProjectResources/SETUP.md`](ProjectResources/SETUP.md).
+> **Status:** implemented. The app ships the five catalogue structures, the full trace pipeline, the
+> redesigned workbench UI, a first-run guided tour, predict-the-next-step practice, and
+> shareable run links. The engineering setup guide, including the rationale for
+> each tooling choice, is [`ProjectResources/SETUP.md`](ProjectResources/SETUP.md).
 
 > **Design authority.** The design and analysis live in the Assignment 1 and Assignment 2
 > documents under [`ProjectResources/`](ProjectResources). Where this README and those
-> documents disagree, **Assignment 2 wins**: it is the graded technical design and this README
+> documents disagree, **Assignment 2 wins**: it is the technical design and this README
 > is a summary of it. Assignment 2 also supersedes Assignment 1 on two points that changed —
-> the graded structure set, and the module layout. Both are reflected below.
+> the structure set, and the module layout. Both are reflected below.
 
 ---
 
@@ -61,16 +60,35 @@ and for instructors demonstrating them on a projector during a lecture.
 | --- | --- |
 | Structure catalogue | Persistent sidebar covering linked lists, stacks, priority queues, trees, and graphs, with a description, supported operations, and a complexity summary for each |
 | Operation workspace | Guided entry for each operation, with preset datasets and custom value entry |
+| Workbench layout | Auto-hiding catalogue, a collapsible inputs guide, narration and transport inside the stage, and a scrollable inspector rail, so the visualisation owns the viewport |
+| Guided tour | A first-run minimap tour that points at the catalogue, operations, inputs, Visualise button, stage, transport, inspector and extra tools; relaunchable from the toolbar |
+| Themes | Semantic dark and light palettes with WCAG-AA text contrast, persisted per browser |
 | Total validation | Every malformed token is reported with a specific reason, not just the first one; the engine is only reachable by validated values |
 | Trace generation | Every operation emits an immutable, replayable `Step[]` before playback begins |
 | Three synchronised panes | Structure view, pseudocode view with line highlighting, and auxiliary-state view, all pure functions of the same step index |
 | Auxiliary state panel | Shows the array, stack, queue, heap, visited set, or call-stack frames appropriate to the current step, one panel component per `aux.kind` |
 | Complexity panel | Theoretical bound shown next to the observed step count, so a degenerate-BST preset actually teaches something |
-| Playback control | Play, pause, step forward, step back, scrub, restart, and exact replay of any step |
-| Graph traversal | BFS and DFS visualised step by step with frontier and visited colouring |
+| Playback control | Play, pause, step forward, step back, scrub, restart, speed from 0.5× to 3×, and exact replay of any step |
+| Practice mode | Predict the next step from three options generated from the trace; score, reveal, and continue. Next is gated until the question is answered |
+| Shareable runs | A copyable link that restores the exact structure, operation, inputs and step index |
+| Graph traversal | BFS and DFS visualised step by step with a layered distance layout, human vertex labels, on-node state labels, and a frontier/visited explainer |
 | Traversals | Preorder, inorder, postorder and level-order over the same tree, so the three depth-first orders differ only in where the visit line sits |
 | Priority queue | Binary min-heap rendered simultaneously as an indexed array and as a complete binary tree, so the `O(n)` build-heap and the `O(n log n)` of n successive inserts can be compared on one input |
-| Accessibility | WCAG 2.1 AA, full keyboard operation, ARIA live-region step announcements, and `prefers-reduced-motion` support |
+| Accessibility | WCAG 2.1 AA, full keyboard operation, ARIA live-region step announcements, a keyboard-navigable tour, and `prefers-reduced-motion` support |
+
+### Beyond the assignment
+
+Two features go past the brief deliberately:
+
+1. **Predict-the-next-step practice.** The quiz is generated from `trace[index + 1]`, so the
+   correct answer can never drift from what playback will do. Two distractors come from other
+   steps (or fixed fallbacks on a short trace), option order is deterministic, and the score is
+   shown beside the question.
+2. **Shareable runs.** The current request and step index are encoded into the URL, so a link
+   opens the same trace at the same moment. The address bar stays in sync as the step changes.
+
+The first-run tour is another addition: it exists because the assignment's NFR-U1 asks that a
+first-time user reach a populated, explained workspace without a manual.
 
 ## Architecture
 
@@ -116,7 +134,7 @@ the DOM. `d3-hierarchy`, `d3-force`, `d3-scale`, `d3-shape`, and `d3-interpolate
 `d3-selection` is not used for the main visualisation, and D3 owns the DOM only inside
 isolated leaves such as an axis. Letting D3 own the SVG while React owns the step index
 would create two sources of truth and stale elements when stepping backwards — and the
-animation is the graded output here.
+animation is the visible output here.
 
 ## The trace contract
 
@@ -232,7 +250,7 @@ highlighted line and the displayed bound cannot drift apart.
 | Language | TypeScript (strict mode) |
 | UI | React |
 | Visualisation | D3 submodules — `d3-hierarchy`, `d3-force`, `d3-scale`, `d3-shape`, `d3-interpolate` |
-| Styling | Tailwind CSS, with one design-token palette for node states |
+| Styling | Tailwind CSS v4, semantic dark/light design tokens for surfaces and node states, IBM Plex Sans + Mono |
 | Build | Vite |
 | State | One reducer or a small store, holding **only** the step index and the loaded trace — the algorithm core stays out of the store. Redux and other large stores are rejected: there is exactly one mutable value, and a heavy store risks putting algorithm state in the UI |
 | Offloading | Web Worker for trace generation above ~200 elements |
@@ -308,6 +326,9 @@ static files.
 - Structural invariants — BST ordering, LIFO for stacks, FIFO for queues, the min-heap
   property at every parent/child index pair, acyclic parent links in trees, no self-loops in
   graphs — are asserted at **every step** of **every** trace.
+- **Practice and share links** have their own deterministic unit tests: the generated answer is
+  always the next trace step, the option order is stable, and malformed shared payloads are
+  rejected rather than partially applied.
 - Target: at least 90% line coverage on the algorithm core. Presentational components are
   excluded from that target.
 
@@ -352,11 +373,18 @@ a session.
 | Key | Action |
 | --- | --- |
 | `Space` | Play / pause |
-| `←` / `→` | Step backward / forward |
+| `←` / `P` | Previous step |
+| `→` / `N` | Next step |
 | `R` | Restart |
+| `Home` / `End` | Jump to the first / last step |
+| `1` `2` `3` | Answer a practice question |
+| `Enter` | Continue after answering |
+| `?` | Open the shortcut list |
+| `Esc` | Close the tour or shortcut dialog |
 
 Keyboard handlers map onto exactly the same controller commands as the buttons, so the
-accessible path is the same code path rather than a parallel one.
+accessible path is the same code path rather than a parallel one. Typing in an input, select or
+textarea is ignored, and Space on a focused button is left to that button.
 
 ## Planned project layout
 
@@ -380,12 +408,14 @@ project-3-PY/
 │   │       ├── traverse/   #     preorder.ts inorder.ts postorder.ts levelOrder.ts
 │   │       └── graph/      #     bfs.ts dfs.ts
 │   ├── app/                # Layer 3: session controller, state machine, validation,
-│   │                       #   catalogue, trace store, Web Worker client, routing
+│   │                       #   catalogue, trace store, practice quiz, share links,
+│   │                       #   Web Worker client, routing
 │   ├── render/             # Layer 4: geometry only
 │   │   ├── renderers/      #   list.tsx stack.tsx heap.tsx tree.tsx graph.tsx
 │   │   └── layout/         #   hierarchy.ts force.ts scales.ts
 │   ├── ui/                 # Layer 5: presentation
-│   │   └── shell/ sidebar/ guide/ panes/ controls/ a11y/ ErrorBoundary.tsx
+│   │   └── shell/ sidebar/ guide/ panes/ controls/ a11y/ practice/
+│   │       tour/ overlays/ theme/ hooks/ icons.tsx ErrorBoundary.tsx
 │   └── data/               # Static, versioned
 │       └── catalogue.ts presets/*.json golden/*.json
 ├── tests/

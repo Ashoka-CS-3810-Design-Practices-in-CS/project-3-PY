@@ -1,37 +1,35 @@
 /**
  * `deleteByValue` — linked-list operation generator.
  *
- * WHAT GOES HERE
- *   Delete the first node holding a value. The generator walks forward keeping the
- *   predecessor, emitting a `Step` per comparison, then unlinks the match and
- *   reports whether anything was deleted.
+ * WHAT IT DOES
+ *   Deletes the first node holding the requested value. The walk keeps the
+ *   predecessor because the unlink needs it: you cannot reconnect around a node
+ *   you cannot reach from the node before it. The trace shows that reason as a
+ *   step of its own, not only as a final result.
  *
- * WHY / REQUIREMENTS
- *   One file per operation (A2 Listing 18). Cost shown: O(n) unless the
- *   predecessor is already known (A1 §6.3). The interesting teaching moment is
- *   *why* the predecessor is needed — the unlink needs the previous node.
+ *     line 2   current ← head
+ *     line 3   while current ≠ null
+ *     line 4       if current.value = value
+ *     line 5           if current = head
+ *     line 6               head ← current.next
+ *     line 7           else
+ *     line 8               predecessor.next ← current.next
+ *     line 9           return head
+ *     line 10      predecessor ← current
+ *     line 11      current ← current.next
+ *     line 12  return head
  *
  * CONTRACT
- *   Pure `(structure, request) -> { trace, summary }`. The `unlinked` delta records
- *   the edge removed, so the renderer never has to guess (A2 Listing 17).
+ *   Pure `(structure, request) -> { trace, summary, finalState }`. The removal
+ *   travels as `unlinked` + `linked` + `removed`, so stepping backwards restores
+ *   the exact previous list and no dangling link survives a replay.
  *
- * STATUS
- *   Not implemented. Added after the vertical slice freezes the Step contract.
+ * RULES
+ *   No React, D3, `render/`, `ui/`, timers or DOM; deterministic (NFR-C2).
+ *   Cost: O(n) in the worst case, O(1) when the value is at the head.
  */
 
-
-/**
- * deleteByValue — linked-list operation generator.
- *
- * Deletes the first node holding the requested value.
- * Emits a Step for each comparison and records the edge removed.
- *
- * Time complexity: O(n)
- */
-
-
-
-import type { GenerateSummary, StructureDelta, Step } from '../../trace/step'
+import type { GenerateSummary, NodeId, Step } from '../../trace/step'
 import {
   HEAD_POINTER,
   applyListDelta,
@@ -56,13 +54,13 @@ export function deleteByValue(
   const trace: Step[] = []
   let state = initial
   let current = initial.head
-  let predecessor: string | null = null
+  let predecessor: NodeId | null = null
   let comparisons = 0
 
   const record = (
     codeLine: number,
     narration: string,
-    delta: StructureDelta,
+    delta: Step['delta'],
     highlight: Step['highlight'],
   ): void => {
     state = applyListDelta(state, delta)
@@ -76,88 +74,135 @@ export function deleteByValue(
     })
   }
 
+  const describe = (id: NodeId | null): string => {
+    if (id === null) return 'null'
+    const node = nodeById(state, id)
+    return node === undefined ? id : String(node.value)
+  }
+
+  // line 2 — current ← head.
+  record(
+    2,
+    current === null
+      ? 'current starts at head, which is null: the list is empty.'
+      : `current starts at head, ${describe(current)}.`,
+    {},
+    current === null
+      ? { nodes: [], edges: [] }
+      : { nodes: [current], active: current, edges: [] },
+  )
+
   // Walk the list, following links from one node to the next.
   while (current !== null) {
     const node = nodeById(state, current)
-
     if (node === undefined) {
       throw new Error(`Invalid linked-list reference: ${current}`)
     }
 
+    // line 3 — while current ≠ null.
+    record(
+      3,
+      `Loop check: current is ${describe(current)}${predecessor === null ? ', with no predecessor yet' : `, preceded by ${describe(predecessor)}`}.`,
+      {},
+      { nodes: [current], active: current, edges: [] },
+    )
+
     comparisons += 1
 
+    // line 4 — if current.value = value.
     record(
       4,
-      `Compare ${String(node.value)} with ${String(request.value)}.`,
+      `Compare ${String(node.value)} with ${String(request.value)}: ${
+        node.value === request.value ? 'equal.' : 'not equal, so keep walking.'
+      }`,
       {},
-      { nodes: [current], active: current, edges: [] }, 
-
-      
+      { nodes: [current], active: current, edges: [] },
     )
 
     if (node.value === request.value) {
-     
-     
+      const successor = nextNode(state, current)
+
+      if (predecessor === null) {
+        // lines 5-6 — the match is the head, so move the head pointer.
+        record(
+          5,
+          `The match is the head, so it has no predecessor; the head pointer itself must move.`,
+          {},
+          { nodes: [current], active: current, edges: [] },
+        )
+        record(
+          6,
+          successor === null
+            ? `Move head to null and remove ${String(node.value)}: the list becomes empty.`
+            : `Move head to ${describe(successor)} and remove ${String(node.value)}.`,
+          {
+            updated: [{ id: HEAD_POINTER, from: current, to: successor }],
+            removed: [current],
+          },
+          successor === null
+            ? { nodes: [current], active: current, edges: [] }
+            : {
+                nodes: [current, successor],
+                active: current,
+                edges: [{ from: current, to: successor, kind: 'next' }],
+              },
+        )
+      } else {
+        // lines 7-8 — reconnect the predecessor around the match.
+        record(
+          7,
+          `${String(node.value)} is not the head, so predecessor ${describe(predecessor)} is the node that can reconnect the list.`,
+          {},
+          {
+            nodes:
+              successor === null
+                ? [predecessor, current]
+                : [predecessor, current, successor],
+            active: current,
+            edges: [],
+          },
+        )
+        record(
+          8,
+          successor === null
+            ? `Unlink ${String(node.value)} from ${describe(predecessor)}; it was the last node.`
+            : `Point ${describe(predecessor)}'s next at ${describe(successor)}, skipping ${String(node.value)}.`,
+          {
+            unlinked: [{ from: predecessor, to: current, kind: 'next' }],
+            ...(successor === null
+              ? {}
+              : {
+                  linked: [
+                    {
+                      from: predecessor,
+                      to: successor,
+                      kind: 'next' as const,
+                    },
+                  ],
+                }),
+            removed: [current],
+          },
+          {
+            nodes:
+              successor === null
+                ? [predecessor, current]
+                : [predecessor, current, successor],
+            active: current,
+            edges: [],
+          },
+        )
+      }
+
+      // line 9 — return head.
       record(
-  5,
-  `Found ${String(node.value)}! Removing this node from the list.`,
-  {},
-  { nodes: [current], active: current, edges: [] },
-   )
- 
-     const successor = nextNode(state, current)  
-
-
-if (predecessor === null) {
-  // The matching node is the head: move the head pointer and remove it.
-  record(
-    6,
-    `Delete the head node holding ${String(node.value)}.`,
-    {
-      updated: [
-        { id: HEAD_POINTER, from: current, to: successor },
-      ],
-      removed: [current],
-    },
-    { nodes: [current], active: current, edges: [] },
-  )
-} else {
-  // Connect the predecessor to the successor and remove the matching node.
-  record(
-    8,
-    `Unlink the node holding ${String(node.value)}.`,
-    {
-      unlinked: [
-        { from: predecessor, to: current, kind: 'next' },
-      ],
-      ...(successor === null
-        ? {}
-        : {
-            linked: [
-              { from: predecessor, to: successor, kind: 'next' as const },
-            ],
-          }),
-      removed: [current],
-    },
-    {
-      nodes: successor === null
-        ? [predecessor, current]
-        : [predecessor, current, successor],
-      active: current,
-      edges: [],
-    },
-  )
-}  
-     
-
-
-
-
-      record(
-        8,
-        `Deleted the first occurrence of ${String(request.value)}.`,
+        9,
+        `Deleted the first occurrence of ${String(request.value)}. ${
+          comparisons === 1
+            ? 'It was the head, so this delete was O(1).'
+            : `The walk took ${comparisons} comparison(s), so the delete was O(n).`
+        }`,
         {},
-        { nodes: [current], active: current, edges: [] },
+        { nodes: [], edges: [] },
       )
 
       return {
@@ -165,23 +210,43 @@ if (predecessor === null) {
         summary: {
           steps: trace.length,
           comparisons,
-          conclusion: `Deleted ${String(request.value)} from the linked list.`,
+          conclusion: `Deleted ${String(request.value)} from the linked list after ${comparisons} comparison(s).`,
         },
         finalState: state,
       }
     }
 
+    // line 10 — predecessor ← current.
     predecessor = current
+    record(
+      10,
+      `Advance predecessor to ${describe(predecessor)} — the node that could relink the list if the next node matches.`,
+      {},
+      { nodes: [predecessor], active: predecessor, edges: [] },
+    )
+
+    // line 11 — current ← current.next.
     current = nextNode(state, current)
+    record(
+      11,
+      current === null
+        ? 'current becomes null, so the walk has reached the end of the list.'
+        : `Move current to the next node, ${describe(current)}.`,
+      {},
+      current === null
+        ? { nodes: [predecessor], active: predecessor, edges: [] }
+        : { nodes: [predecessor, current], active: current, edges: [] },
+    )
   }
 
+  // line 12 — return head, unchanged.
   record(
     12,
     `Value ${String(request.value)} was not found. The list remains unchanged.`,
     {},
     {
       nodes: predecessor === null ? [] : [predecessor],
-      active: predecessor ?? undefined,
+      ...(predecessor === null ? {} : { active: predecessor }),
       edges: [],
     },
   )
@@ -197,10 +262,10 @@ if (predecessor === null) {
   }
 }
 
-/** Find the node reached by following the current node's next link. */
-function nextNode(
-  model: LinkedListModel,
-  id: string,
-): string | null {
-  return model.links.find((link) => link.from === id && link.kind === 'next')?.to ?? null
+/** Follow the current node's `next` link, if it has one. */
+function nextNode(model: LinkedListModel, id: NodeId): NodeId | null {
+  return (
+    model.links.find((link) => link.from === id && link.kind === 'next')?.to ??
+    null
+  )
 }

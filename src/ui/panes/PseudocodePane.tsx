@@ -35,15 +35,16 @@ export function PseudocodePane({
   return (
     <section
       aria-label="Pseudocode"
-      className="rounded-xl border border-line bg-surface p-3"
+      data-tour="pseudocode"
+      className="rounded-lg border border-line bg-surface p-3"
     >
-      <h2 className="mb-2 text-xs font-semibold tracking-wide text-muted uppercase">
+      <h2 className="mb-2 text-[11px] font-semibold tracking-wide text-muted">
         Pseudocode{operationLabel !== undefined ? ` · ${operationLabel}` : ''}
       </h2>
       {lines.length === 0 ? (
         <p className="text-sm text-muted">No listing for this operation.</p>
       ) : (
-        <ol className="font-mono text-sm leading-6">
+        <ol className="font-mono text-[12px] leading-5">
           {lines.map((line, position) => {
             const lineNumber = position + 1
             const isActive = lineNumber === activeLine
@@ -52,10 +53,12 @@ export function PseudocodePane({
                 key={lineNumber}
                 aria-current={isActive ? 'step' : undefined}
                 className={
-                  isActive ? 'rounded bg-warn/15 text-warn' : 'text-ink-dim'
+                  isActive
+                    ? 'rounded-sm border-l-2 border-warn bg-warn/15 pl-1 text-warn'
+                    : 'border-l-2 border-transparent pl-1 text-ink-dim'
                 }
               >
-                <span className="inline-block w-7 pr-2 text-right text-subtle select-none">
+                <span className="inline-block w-6 pr-2 text-right text-subtle select-none">
                   {lineNumber}
                 </span>
                 <span className="whitespace-pre">{line}</span>

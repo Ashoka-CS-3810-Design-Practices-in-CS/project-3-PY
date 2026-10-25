@@ -2,12 +2,12 @@
  * The trace contract — the single module that defines what an algorithm emits and
  * what every panel reads (A2 Listing 17, ADR-6, NFR-M3).
  *
- * ==================== FROZEN · v1.2 (additive over v1.1) ====================
+ * ==================== FROZEN · v1.4 (additive over v1.3) ====================
  * v1 was frozen when the first vertical slice (linked-list `insertAtHead`) was
  * working, as A2 §5.7 requires: build one slice, freeze the contract, then add
- * structures. v1.1/v1.2 add only OPTIONAL fields, exactly the mechanism ADR-8 sets
- * out for "the concrete shapes for `aux` kinds other than none" and for the
- * heap/BST/graph deltas:
+ * structures. v1.1–v1.4 add only OPTIONAL fields, exactly the mechanism
+ * ADR-8 sets out for "the concrete shapes for `aux` kinds other than none" and for
+ * the heap/BST/graph deltas:
  *
  *   - `StructureDelta.removed`  — a node/entry leaves the structure (BST delete,
  *                                 heap extract). Without it a deleted node would
@@ -25,10 +25,20 @@
  *   - `AuxState.output`         — the values a traversal/extract has produced so
  *                                 far, so the output sequence is visible as it
  *                                 grows rather than only in the final summary.
+ *   - `AuxKind = "pointers"` +
+ *     `AuxState.pointers`       — the named pointer variables of an in-place walk
+ *                                 (`prev` / `current` / `next`). A pointer badge is
+ *                                 not a node and not an edge, so it gets its own
+ *                                 channel; it is what lets list `reverse` show the
+ *                                 standard three-pointer dance on the canvas.
+ *   - `Step.milestone`           — a short label for a composed-trace boundary
+ *                                 (e.g. `"heap-built"`). It is not a change to the
+ *                                 structure; it tells the player to pause and the
+ *                                 narration panel to render the step as a warning.
  *
  * Because every addition is optional and no existing generator emits it, the v1
  * golden trace and the shape-lock test are unchanged: a v1 trace is still a valid
- * v1.2 trace. See `ProjectResources/ADR-8-step-contract-freeze.md` for the
+ * v1.4 trace. See `ProjectResources/ADR-8-step-contract-freeze.md` for the
  * decisions and the rationale for each field.
  *
  * The change policy from here:
@@ -134,9 +144,22 @@ export const AUX_KINDS = [
   'heap',
   'visited',
   'recursion',
+  'pointers',
 ] as const
 
 export type AuxKind = (typeof AUX_KINDS)[number]
+
+/**
+ * The named pointer variables an in-place walk keeps.
+ *
+ * `id` is `null` for a pointer that points nowhere yet — `prev` starts as null,
+ * and `next` is null past the last node. That null is meaningful: it is the
+ * difference between "no previous node" and "not shown".
+ */
+export type AuxPointer = {
+  role: 'prev' | 'current' | 'next'
+  id: NodeId | null
+}
 
 export type AuxState = {
   kind: AuxKind
@@ -180,6 +203,15 @@ export type AuxState = {
    * order the algorithm actually returns.
    */
   output?: (string | number)[]
+  /**
+   * ADDITIVE (v1.3) — the named pointer variables of an in-place walk.
+   *
+   * This is deliberately not an edge: a pointer variable can name a node that has
+   * no edge to the current one (that is the whole point of the temporary `next`),
+   * and the renderer draws it as a badge over the node rather than as a link.
+   * `kind: "pointers"` selects the matching panel and the on-canvas badges.
+   */
+  pointers?: AuxPointer[]
 }
 
 export type Step = {
@@ -187,6 +219,16 @@ export type Step = {
   operation: string // matches OperationMeta.id: "insertAtHead" | "inorder" | ...
   codeLine: number // line of the operation's pseudocode executing
   narration: string // one plain-English sentence for this step
+  /**
+   * ADDITIVE (v1.4) — a composed-trace boundary worth stopping on.
+   *
+   * The heap extract operations are composed as "build, then extract". Without a
+   * boundary step the build's last sift and the extract's first read are adjacent,
+   * so the learner never sees the finished heap. A milestone does not alter the
+   * structure; it marks the step as a phase change so the controller pauses and
+   * the narration panel can show it as a warning.
+   */
+  milestone?: string
   highlight: { nodes: NodeId[]; active?: NodeId; edges: TraceEdge[] }
   delta: StructureDelta // created / linked / unlinked / updated
   /**

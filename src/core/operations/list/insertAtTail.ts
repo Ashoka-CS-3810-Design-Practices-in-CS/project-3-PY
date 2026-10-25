@@ -1,17 +1,18 @@
-
 /**
  * `insertAtTail` — linked-list operation generator.
  *
  * WHAT IT DOES
  *   Inserts a new node at the end of the linked list.
  *
- *     line 2  create the new node
- *     line 3  handle the empty list by moving head
- *     line 4  initialize current at head
- *     line 5  check whether current is the last node
- *     line 6  move current to the next node
- *     line 7  link the last node to the new node
- *     line 8  return
+ *     line 2   create the new node
+ *     line 3   if head = null:
+ *     line 4       head ← node
+ *     line 5       return head
+ *     line 6   current ← head
+ *     line 7   while current.next ≠ null:
+ *     line 8       current ← current.next
+ *     line 9   current.next ← node
+ *     line 10  return head
  *
  * HOW IT IS SHARED
  *   Pure (structure, request) -> { trace, summary, finalState }.
@@ -21,7 +22,6 @@
  * COST
  *   O(n) time because we traverse the list to find the last node.
  */
-
 
 import type { GenerateSummary, StructureDelta, Step } from '../../trace/step'
 import {
@@ -78,18 +78,19 @@ export function insertAtTail(
     { nodes: [newId], active: newId, edges: [] },
   )
 
-  // line 3 — if head = null: head ← node
+  // line 3 — if head = null:
   if (state.head === null) {
+    // line 4 — head ← node
     record(
-      3,
+      4,
       'The list is empty, so move the head pointer to the new node.',
       { updated: [{ id: HEAD_POINTER, from: null, to: newId }] },
       { nodes: [newId], active: newId, edges: [] },
     )
 
-    // line 8 — return head
+    // line 5 — return head
     record(
-      8,
+      5,
       `Inserted ${String(request.value)} into the empty list in O(1).`,
       {},
       { nodes: [newId], active: newId, edges: [] },
@@ -106,24 +107,24 @@ export function insertAtTail(
     }
   }
 
-  // line 4 — current ← head
+  // line 6 — current ← head
   let current = state.head
 
   record(
-    4,
+    6,
     'Start traversing from the head of the list.',
     {},
     { nodes: [current], active: current, edges: [] },
   )
 
-  // line 5 — while current.next ≠ null
+  // line 7 — while current.next ≠ null
   while (true) {
     const outgoing = state.links.find((link) => link.from === current)
     comparisons += 1
 
     if (outgoing === undefined) {
       record(
-        5,
+        7,
         `${String(nodeById(state, current)?.value)} is the last node; its next pointer is null.`,
         {},
         { nodes: [current], active: current, edges: [] },
@@ -132,7 +133,7 @@ export function insertAtTail(
     }
 
     record(
-      5,
+      7,
       `The current node is not the last node; continue past ${String(nodeById(state, current)?.value)}.`,
       {},
       {
@@ -142,13 +143,13 @@ export function insertAtTail(
       },
     )
 
-    // line 6 — current ← current.next
+    // line 8 — current ← current.next
     current = outgoing.to
 
     const nextLink = state.links.find((link) => link.from === current)
 
     record(
-      6,
+      8,
       `Move to the next node, ${String(nodeById(state, current)?.value)}.`,
       {},
       {
@@ -159,9 +160,9 @@ export function insertAtTail(
     )
   }
 
-  // line 7 — current.next ← node
+  // line 9 — current.next ← node
   record(
-    7,
+    9,
     `Link the last node, ${String(nodeById(state, current)?.value)}, to the new node.`,
     { linked: [{ from: current, to: newId, kind: 'next' }] },
     {
@@ -171,9 +172,9 @@ export function insertAtTail(
     },
   )
 
-  // line 8 — return head
+  // line 10 — return head
   record(
-    8,
+    10,
     `Inserted ${String(request.value)} at the tail in O(n).`,
     {},
     { nodes: [current, newId], active: newId, edges: [] },

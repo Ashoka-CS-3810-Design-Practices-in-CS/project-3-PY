@@ -1,7 +1,7 @@
 {
   "id": "list-basic",
   "structureId": "list",
-  "label": "Linked list (16 values)",
-  "description": "A mixed-order list for insert/delete/reverse. Long enough to show a pointer walk that is more than one hop.",
-  "values": [50, 30, 70, 20, 40, 60, 80, 10, 90, 25, 35, 45, 55, 65, 75, 85]
+  "label": "Linked list (10 values)",
+  "description": "A mixed-order list for insert, delete and reverse. Ten values keep every link and pointer badge readable on screen.",
+  "values": [50, 30, 70, 20, 40, 60, 80, 10, 90, 25]
 }

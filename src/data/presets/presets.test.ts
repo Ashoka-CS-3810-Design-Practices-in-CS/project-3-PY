@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  MIN_PRESET_VALUES,
+  MAX_PRESET_VALUES,
   PRESET_DATASETS,
   getPreset,
   presetEdgesToText,
@@ -12,6 +12,7 @@ import {
   validateGraphEdges,
   validateGraphSource,
   validateHeapValues,
+  validateValues,
 } from '../../app/validate'
 import { bstHeight, buildBst, isBst } from '../../core/model/bst'
 import {
@@ -25,7 +26,13 @@ import { buildGraphFromLabels, isGraphValid } from '../../core/model/graph'
 
 describe('preset datasets (FR4)', () => {
   it('ships at least one preset for every structure the catalogue offers', () => {
-    for (const structureId of ['list', 'bst', 'heap', 'graph'] as const) {
+    for (const structureId of [
+      'list',
+      'stack',
+      'bst',
+      'heap',
+      'graph',
+    ] as const) {
       expect(presetsForStructure(structureId).length).toBeGreaterThan(0)
     }
   })
@@ -39,16 +46,19 @@ describe('preset datasets (FR4)', () => {
     expect(getPreset('does-not-exist')).toBeUndefined()
   })
 
-  it('has at least 15 values for every preset (the presentation floor)', () => {
+  it('caps every preloaded preset at 10 entries', () => {
     for (const preset of PRESET_DATASETS) {
       if (preset.structureId === 'graph') {
         const report = validateGraphEdges(presetEdgesToText(preset), {
           directed: preset.directed,
         })
-        expect(report.vertices.length).toBeGreaterThanOrEqual(MIN_PRESET_VALUES)
-        expect(report.edges.length).toBeGreaterThanOrEqual(MIN_PRESET_VALUES)
+        expect(report.vertices.length).toBeGreaterThan(0)
+        expect(report.vertices.length).toBeLessThanOrEqual(MAX_PRESET_VALUES)
+        expect(report.edges.length).toBeGreaterThan(0)
+        expect(report.edges.length).toBeLessThanOrEqual(MAX_PRESET_VALUES)
       } else {
-        expect(preset.values.length).toBeGreaterThanOrEqual(MIN_PRESET_VALUES)
+        expect(preset.values.length).toBeGreaterThan(0)
+        expect(preset.values.length).toBeLessThanOrEqual(MAX_PRESET_VALUES)
       }
     }
   })
@@ -60,6 +70,9 @@ describe('preset datasets (FR4)', () => {
       }
       if (preset.structureId === 'heap') {
         expect(validateHeapValues(presetValuesToText(preset)).ok).toBe(true)
+      }
+      if (preset.structureId === 'stack') {
+        expect(validateValues(presetValuesToText(preset)).ok).toBe(true)
       }
     }
   })

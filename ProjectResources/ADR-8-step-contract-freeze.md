@@ -61,3 +61,26 @@ while it is cheap.
 - Whether `highlight` should carry the pointer identity separately from `edges`.
 - Worker message types (`GenerateRequest` / `GenerateResponse`), derived from this
   contract when the worker is added.
+
+## Addendum — v1.3 (`pointers`)
+
+`AuxKind = "pointers"` plus `AuxState.pointers` were added to support the
+standard three-pointer linked-list `reverse` animation. A pointer variable is
+neither a node nor an edge, so it gets its own optional channel:
+
+```ts
+type AuxPointer = { role: 'prev' | 'current' | 'next'; id: NodeId | null }
+```
+
+`null` is meaningful (no previous node yet / past the last node). The list
+renderer draws each role as a badge over the node it names, and the auxiliary
+pane lists the same variables. The top-level `Step` key set is unchanged; the
+shape-lock test still sees exactly the v1 keys.
+
+## Addendum — v1.4 (`milestone`)
+
+`Step.milestone?: string` marks a composed-trace phase boundary (for example
+`"heap-built"`). It does not change the structure; it tells the player to pause
+ON that step and tells the visible narration panel to render it as a warning.
+The build and extract phases stay independently pure generators; the boundary is
+inserted by `app/runOperation.ts` where the composition happens.

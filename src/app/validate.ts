@@ -156,6 +156,76 @@ export function validateValue(input: string): ValidationReport {
   return reportFrom(tokens)
 }
 
+/**
+ * Exactly one non-negative integer position, required — the linked-list
+ * `insertAt` index. Positions past the end are handled by the generator (they
+ * append), so the validator deliberately does not cap against a list length it
+ * cannot see.
+ */
+export function validatePosition(input: string): ValidationReport {
+  const tokens = tokenise(input)
+  if (tokens.length === 0) {
+    return {
+      ok: false,
+      tokens: [
+        {
+          token: input,
+          status: 'rejected',
+          reason: 'Enter a position (0 or greater).',
+        },
+      ],
+      accepted: [],
+    }
+  }
+  if (tokens.length > 1) {
+    return {
+      ok: false,
+      tokens: tokens.map((token) => ({
+        token,
+        status: 'rejected' as const,
+        reason: 'Enter a single position, not a list.',
+      })),
+      accepted: [],
+    }
+  }
+
+  const token = tokens[0]
+  if (!INTEGER.test(token)) {
+    return {
+      ok: false,
+      tokens: [
+        {
+          token,
+          status: 'rejected',
+          reason: 'position must be a whole number',
+        },
+      ],
+      accepted: [],
+    }
+  }
+
+  const value = Number(token)
+  if (value < 0) {
+    return {
+      ok: false,
+      tokens: [
+        {
+          token,
+          status: 'rejected',
+          reason: 'position must be 0 or greater',
+        },
+      ],
+      accepted: [],
+    }
+  }
+
+  return {
+    ok: true,
+    tokens: [{ token, status: 'accepted', value }],
+    accepted: [value],
+  }
+}
+
 export type IntegerRules = {
   /** Reject repeats (A1 ER4, the BST). The heap allows duplicates. */
   uniqueRequired?: boolean

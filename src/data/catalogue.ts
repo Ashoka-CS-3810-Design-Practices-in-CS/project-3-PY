@@ -30,10 +30,12 @@
  *
  *   - `values`  a list of integers (list contents, BST keys, heap array)
  *   - `value`   one integer (an insert/search/delete key, a heap insert value)
+ *   - `position` one non-negative integer (the linked-list `insertAt` index)
  *   - `edges`   a graph edge list, one `A-B` per line
  *   - `source`  one vertex label to start BFS/DFS from
  */
-export type OperationInput = 'values' | 'value' | 'edges' | 'source'
+export type OperationInput =
+  'values' | 'value' | 'position' | 'edges' | 'source'
 
 /** A2 Listing 16, extended with the inputs the guided entry must collect. */
 export type OperationMeta = {
@@ -82,8 +84,27 @@ export const PSEUDOCODE_LISTINGS: Record<string, PseudocodeListing> = {
       '    head ← node',
       '    return head',
     ],
-  },  
+  },
 
+  insertAt: {
+    id: 'insertAt',
+    lines: [
+      'function insertAt(head, value, k):',
+      '    node ← new Node(value)',
+      '    if k ≤ 0 or head = null:',
+      '        node.next ← head',
+      '        head ← node',
+      '        return head',
+      '    current ← head',
+      '    i ← 1',
+      '    while current.next ≠ null and i < k:',
+      '        current ← current.next',
+      '        i ← i + 1',
+      '    node.next ← current.next',
+      '    current.next ← node',
+      '    return head',
+    ],
+  },
 
   insertAtTail: {
     id: 'insertAtTail',
@@ -101,27 +122,73 @@ export const PSEUDOCODE_LISTINGS: Record<string, PseudocodeListing> = {
     ],
   },
 
-
   deleteByValue: {
-  id: 'deleteByValue',
-  lines: [
-    'function deleteByValue(head, value):',
-    '    current ← head',
-    '    while current ≠ null:',
-    '        if current.value = value:',
-    '            if current = head:',
-    '                head ← current.next',
-    '            else:',
-    '                predecessor.next ← current.next',
-    '            return head',
-    '        predecessor ← current',
-    '        current ← current.next',
-    '    return head',
-  ],
+    id: 'deleteByValue',
+    lines: [
+      'function deleteByValue(head, value):',
+      '    current ← head',
+      '    while current ≠ null:',
+      '        if current.value = value:',
+      '            if current = head:',
+      '                head ← current.next',
+      '            else:',
+      '                predecessor.next ← current.next',
+      '            return head',
+      '        predecessor ← current',
+      '        current ← current.next',
+      '    return head',
+    ],
   },
 
+  reverse: {
+    id: 'reverse',
+    lines: [
+      'function reverse(head):',
+      '    prev ← null',
+      '    current ← head',
+      '    while current ≠ null:',
+      '        next ← current.next        # save the rest',
+      '        current.next ← prev        # reverse the link',
+      '        prev ← current             # advance prev',
+      '        current ← next             # advance current',
+      '    head ← prev',
+      '    return head',
+    ],
+  },
 
-
+  // ---------------------------------------------------------------- stack
+  stackPush: {
+    id: 'stackPush',
+    lines: [
+      'function push(stack, value):',
+      '    if stack.size = stack.capacity:',
+      '        capacity ← capacity × 2',
+      '    top ← top + 1',
+      '    stack[top] ← new Entry(value)',
+      '    return stack',
+    ],
+  },
+  stackPop: {
+    id: 'stackPop',
+    lines: [
+      'function pop(stack):',
+      '    if stack is empty:',
+      '        return null',
+      '    value ← stack[top]',
+      '    top ← top - 1',
+      '    remove stack[top + 1]',
+      '    return value',
+    ],
+  },
+  stackPeek: {
+    id: 'stackPeek',
+    lines: [
+      'function peek(stack):',
+      '    if stack is empty:',
+      '        return null',
+      '    return stack[top]',
+    ],
+  },
 
   // ---------------------------------------------------------------- BST
   bstSearch: {
@@ -399,9 +466,23 @@ export const OPERATION_META: Record<string, OperationMeta> = {
     assumptions: [
       'Only the head pointer changes; the existing list is never walked.',
     ],
-  },  
-  
-  
+  },
+  insertAt: {
+    id: 'insertAt',
+    label: 'Insert at position',
+    pseudocodeId: 'insertAt',
+    inputs: ['values', 'value', 'position'],
+    best: 'O(1)',
+    average: 'O(k)',
+    worst: 'O(n)',
+    space: 'O(1)',
+    assumptions: [
+      'k is 0-based; position 0 is the head and needs no walk.',
+      'A position past the end appends at the tail (the narration says so).',
+      'The new node floats until predecessor.next and node.next are both set.',
+    ],
+  },
+
   insertAtTail: {
     id: 'insertAtTail',
     label: 'Insert at tail',
@@ -417,8 +498,6 @@ export const OPERATION_META: Record<string, OperationMeta> = {
     ],
   },
 
-
-  
   deleteByValue: {
     id: 'deleteByValue',
     label: 'Delete by value',
@@ -433,8 +512,66 @@ export const OPERATION_META: Record<string, OperationMeta> = {
       'If the value is absent, the list remains unchanged.',
     ],
   },
+  reverse: {
+    id: 'reverse',
+    label: 'Reverse',
+    pseudocodeId: 'reverse',
+    inputs: ['values'],
+    best: 'O(n)',
+    average: 'O(n)',
+    worst: 'O(n)',
+    space: 'O(1)',
+    assumptions: [
+      'The standard three-pointer walk: prev, current and a saved next.',
+      'Every node is visited once and every next pointer is flipped exactly once.',
+      'Reversing twice restores the original order; no node is copied.',
+    ],
+  },
 
-
+  // ---------------------------------------------------------------- stack
+  stackPush: {
+    id: 'stackPush',
+    label: 'Push',
+    pseudocodeId: 'stackPush',
+    inputs: ['values', 'value'],
+    best: 'O(1)',
+    average: 'O(1) amortised',
+    worst: 'O(n) on a resize',
+    space: 'O(1)',
+    assumptions: [
+      'Only the top cell and the top pointer change.',
+      'The array doubles when full; that one copy is O(n), amortised over pushes.',
+      'top advances before the value is written, so the reserved slot is visible.',
+    ],
+  },
+  stackPop: {
+    id: 'stackPop',
+    label: 'Pop',
+    pseudocodeId: 'stackPop',
+    inputs: ['values'],
+    best: 'O(1)',
+    average: 'O(1)',
+    worst: 'O(1)',
+    space: 'O(1)',
+    assumptions: [
+      'Reads and removes the most recently pushed value.',
+      'Pop on an empty stack returns null instead of throwing (underflow is an outcome).',
+    ],
+  },
+  stackPeek: {
+    id: 'stackPeek',
+    label: 'Peek',
+    pseudocodeId: 'stackPeek',
+    inputs: ['values'],
+    best: 'O(1)',
+    average: 'O(1)',
+    worst: 'O(1)',
+    space: 'O(1)',
+    assumptions: [
+      'Reads the top value without changing the stack.',
+      'Peek on an empty stack returns null and leaves the structure unchanged.',
+    ],
+  },
 
   // ---------------------------------------------------------------- BST
   bstInsertAll: {
@@ -704,8 +841,29 @@ export const CATALOGUE: CatalogueEntry[] = [
     label: 'Linked list',
     description:
       'A sequence of nodes joined by next pointers, reached through a single head reference.',
-    operations: ['insertAtHead', 'insertAtTail', 'deleteByValue'],
-    rules: ['Values are numbers or short strings.'],
+    operations: [
+      'insertAtHead',
+      'insertAt',
+      'insertAtTail',
+      'deleteByValue',
+      'reverse',
+    ],
+    rules: [
+      'Values are numbers or short strings.',
+      'Insert positions are 0-based; a position past the end appends.',
+    ],
+  },
+  {
+    id: 'stack',
+    label: 'Stack',
+    description:
+      'A LIFO container backed by an array: entries grow from slot 0 upward and a top pointer names the only reachable end. Push writes above top, pop steps top down, and peek reads without changing anything.',
+    operations: ['stackPush', 'stackPop', 'stackPeek'],
+    rules: [
+      'Values are numbers or short strings.',
+      'Only the top (the last value) is reachable: push, pop and peek are all O(1).',
+      'Pop or peek on an empty stack returns null — underflow is an outcome, not an error.',
+    ],
   },
   {
     id: 'heap',

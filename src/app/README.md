@@ -13,6 +13,8 @@ app/
 ├── validate.ts       total, per-token validation before construction (ADR-7)
 ├── runOperation.ts   the pipeline: validate → build → execute → LoadInput, for every structure
 ├── catalogue.ts      typed lookups over data/catalogue.ts
+├── practice.ts       deterministic predict-the-next-step quiz over a trace
+├── shareLink.ts      encode/decode a run request + step index in the URL
 ├── workerClient.ts   main-thread side of the worker boundary (not in this slice)
 ├── worker.ts         worker entry point (not in this slice)
 └── routes.ts         tiny catalogue router (not in this slice)
@@ -46,6 +48,14 @@ Every report classifies **every** token (`FR6`) with `accepted | ignored | rejec
 Caps come from `VALIDATION_LIMITS` (A1 `FR5`: ≤200 tokens, ±9999; `NFR-S1`: 200 nodes for
 trees/graphs), so the numbers live in exactly one place. Presets (`data/presets/`) are turned
 back into text and validated through the same functions — nothing bypasses validation.
+
+## Practice and share links
+
+`practice.ts` builds a prediction from `trace[index + 1]`: the correct answer is always the next
+narration, two distractors come from other steps (or fixed fallbacks), and a seeded shuffle keeps
+the option order deterministic for a given run. `shareLink.ts` turns the validated request plus the
+step index into a query parameter and back, rejecting malformed payloads rather than partially
+applying them. Both modules are pure and DOM-free except for the optional URL default.
 
 ## Rules
 

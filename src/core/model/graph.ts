@@ -13,7 +13,7 @@
  *   reducer, and the invariant checks.
  *
  * WHY THIS FILE EXISTS
- *   The graph is a graded structure (A2 §4.5) and the base for BFS and DFS, which
+ *   The graph is a catalogue structure (A2 §4.5) and the base for BFS and DFS, which
  *   are the only two operations that read it. The adjacency list gives space
  *   O(V+E) and makes iterating a vertex's neighbours — the unit the animation
  *   displays — cost O(deg v), hence traversal O(V+E). An edge-existence check is

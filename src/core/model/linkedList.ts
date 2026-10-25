@@ -103,7 +103,8 @@ export function nodeById(
  * Applies one step's `delta` and returns a NEW model — `model` is never mutated.
  *
  * This is the reducer the trace store replays: add created nodes, add/remove
- * `next` links, and move the head pointer (`updated` with id `@head`).
+ * `next` links, move the head pointer (`updated` with id `@head`), update node
+ * values, and drop removed nodes together with any link that referenced them.
  */
 export function applyListDelta(
   model: LinkedListModel,
@@ -120,7 +121,10 @@ export function applyListDelta(
   }
 
   for (const edge of delta.linked ?? []) {
-    if (!links.some((link) => link.from === edge.from && link.to === edge.to)) {
+    const exists = links.some(
+      (link) => link.from === edge.from && link.to === edge.to,
+    )
+    if (!exists) {
       links.push({ from: edge.from, to: edge.to, kind: edge.kind ?? 'next' })
     }
   }
@@ -129,9 +133,7 @@ export function applyListDelta(
     const index = links.findIndex(
       (link) => link.from === edge.from && link.to === edge.to,
     )
-    if (index !== -1) {
-      links.splice(index, 1)
-    }
+    if (index !== -1) links.splice(index, 1)
   }
 
   for (const change of delta.updated ?? []) {
@@ -147,32 +149,33 @@ export function applyListDelta(
       head =
         change.to === null || change.to === undefined ? null : String(change.to)
       continue
-    } 
-  
+    }
 
     const index = nodes.findIndex((node) => node.id === change.id)
     if (index !== -1) {
       nodes[index] = { ...nodes[index], value: change.to as string | number }
     }
-  } 
-
-  for (const removedId of delta.removed ?? []) {
-  const index = nodes.findIndex((node) => node.id === removedId)
-
-  if (index !== -1) {
-    nodes.splice(index, 1)
   }
-}
 
-// Remove any links connected to deleted nodes.
-for (let i = links.length - 1; i >= 0; i--) {
-  if (
-    delta.removed?.includes(links[i].from) ||
-    delta.removed?.includes(links[i].to)
-  ) {
-    links.splice(i, 1)
+  const removed = new Set(delta.removed ?? [])
+  for (const removedId of removed) {
+    const index = nodes.findIndex((node) => node.id === removedId)
+    if (index !== -1) nodes.splice(index, 1)
   }
-}
+
+  // Remove any link that referenced a deleted node, so a replay can never hold a
+  // dangling pointer.
+  for (let i = links.length - 1; i >= 0; i -= 1) {
+    if (removed.has(links[i].from) || removed.has(links[i].to)) {
+      links.splice(i, 1)
+    }
+  }
+
+  // Removing the head node without a pointer edit would leave `head` dangling;
+  // the generators always move the pointer first, so this is a defensive check.
+  if (head !== null && removed.has(head)) {
+    head = null
+  }
 
   return { nodes, links, head }
 }

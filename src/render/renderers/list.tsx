@@ -41,8 +41,8 @@ const NODE_FILL = {
 /** Ink that stays readable on each fill (light on dark fills, dark on bright). */
 const NODE_INK = {
   undiscovered: 'var(--color-ink)',
-  touched: 'var(--color-base)',
-  current: 'var(--color-base)',
+  touched: 'var(--color-node-ink)',
+  current: 'var(--color-node-ink)',
 } as const
 
 /* Non-text graphics only need 3:1 (WCAG 1.4.11); `subtle` gives 5.81:1. */
@@ -57,11 +57,17 @@ function valueFontSize(value: unknown, base: number): number {
 }
 
 export function ListRenderer({ state, step }: ListRendererProps) {
-  const radius = LIST_LAYOUT.nodeRadius
   const ordered = orderFromHead(state)
   const floating = state.nodes
     .map((node) => node.id)
     .filter((id) => !ordered.includes(id))
+
+  // The row gives every link a visible shaft: the radius is chosen so two
+  // neighbouring circles leave a real gap for the arrow, not just an arrowhead.
+  const rowWidth = LIST_LAYOUT.width - 2 * LIST_LAYOUT.margin
+  const spacing =
+    ordered.length > 1 ? rowWidth / (ordered.length - 1) : rowWidth
+  const radius = Math.max(10, Math.min(24, Math.floor((spacing - 22) / 2)))
 
   const positions: Record<string, Point> = {
     ...layoutRow(ordered, LIST_LAYOUT.rowY),
@@ -73,6 +79,27 @@ export function ListRenderer({ state, step }: ListRendererProps) {
   const activeEdges = step?.highlight.edges ?? []
   const headPosition = state.head === null ? undefined : positions[state.head]
 
+  // The three-pointer walk (list `reverse`) sends its variables as aux data. A
+  // pointer is not an edge, so it is drawn as a small badge under the node it
+  // names. Badges stack when two roles name the same node (`prev` and `current`
+  // coincide on the step after the flip).
+  const pointerRoles: Record<string, { role: string; color: string }[]> = {}
+  if (step?.aux?.kind === 'pointers') {
+    for (const pointer of step.aux.pointers ?? []) {
+      if (pointer.id === null) continue
+      const color =
+        pointer.role === 'prev'
+          ? 'var(--color-info)'
+          : pointer.role === 'current'
+            ? 'var(--color-accent)'
+            : 'var(--color-warn)'
+      ;(pointerRoles[pointer.id] ??= []).push({
+        role: pointer.role,
+        color,
+      })
+    }
+  }
+
   return (
     <svg
       viewBox={`0 0 ${LIST_LAYOUT.width} ${LIST_LAYOUT.height}`}
@@ -83,25 +110,27 @@ export function ListRenderer({ state, step }: ListRendererProps) {
       <defs>
         <marker
           id="list-arrow"
-          viewBox="0 0 10 10"
-          refX="9"
-          refY="5"
-          markerWidth="7"
-          markerHeight="7"
+          viewBox="0 0 12 12"
+          refX="10.5"
+          refY="6"
+          markerWidth="10"
+          markerHeight="10"
+          markerUnits="userSpaceOnUse"
           orient="auto"
         >
-          <path d="M 0 0 L 10 5 L 0 10 z" fill={EDGE} />
+          <path d="M 1 1 L 11 6 L 1 11 L 3.5 6 Z" fill={EDGE} />
         </marker>
         <marker
           id="list-arrow-active"
-          viewBox="0 0 10 10"
-          refX="9"
-          refY="5"
-          markerWidth="7"
-          markerHeight="7"
+          viewBox="0 0 12 12"
+          refX="10.5"
+          refY="6"
+          markerWidth="10"
+          markerHeight="10"
+          markerUnits="userSpaceOnUse"
           orient="auto"
         >
-          <path d="M 0 0 L 10 5 L 0 10 z" fill={EDGE_ACTIVE} />
+          <path d="M 1 1 L 11 6 L 1 11 L 3.5 6 Z" fill={EDGE_ACTIVE} />
         </marker>
       </defs>
 
@@ -144,12 +173,13 @@ export function ListRenderer({ state, step }: ListRendererProps) {
         return (
           <line
             key={`${link.from}->${link.to}`}
-            x1={from.x + (dx / distance) * radius}
-            y1={from.y + (dy / distance) * radius}
-            x2={to.x - (dx / distance) * radius}
-            y2={to.y - (dy / distance) * radius}
+            x1={from.x + (dx / distance) * (radius + 2)}
+            y1={from.y + (dy / distance) * (radius + 2)}
+            x2={to.x - (dx / distance) * (radius + 3)}
+            y2={to.y - (dy / distance) * (radius + 3)}
             stroke={isActive ? EDGE_ACTIVE : EDGE}
-            strokeWidth={isActive ? 3 : 1.6}
+            strokeWidth={isActive ? 2.6 : 2}
+            strokeLinecap="round"
             markerEnd={`url(#${isActive ? 'list-arrow-active' : 'list-arrow'})`}
           />
         )
@@ -190,18 +220,49 @@ export function ListRenderer({ state, step }: ListRendererProps) {
             <circle
               r={radius}
               fill={NODE_FILL[kind]}
-              stroke="var(--color-base)"
+              stroke="var(--color-node-stroke)"
               strokeWidth={1.5}
             />
             <text
               textAnchor="middle"
               dominantBaseline="central"
-              fontSize={valueFontSize(node.value, 15)}
+              fontSize={valueFontSize(
+                node.value,
+                Math.round(Math.max(9, Math.min(15, radius * 0.62))),
+              )}
               fontWeight="600"
               fill={NODE_INK[kind]}
             >
               {String(node.value)}
             </text>
+            {(pointerRoles[node.id] ?? []).map((pointer, offset) => {
+              const badgeY = radius + 12 + offset * 15
+              return (
+                <g key={`${node.id}-${pointer.role}`}>
+                  <rect
+                    x={-21}
+                    y={badgeY - 7}
+                    width={42}
+                    height={14}
+                    rx={7}
+                    fill="var(--color-surface)"
+                    stroke={pointer.color}
+                    strokeWidth={1.5}
+                  />
+                  <text
+                    x={0}
+                    y={badgeY}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fontSize="8"
+                    fontWeight="700"
+                    fill={pointer.color}
+                  >
+                    {pointer.role}
+                  </text>
+                </g>
+              )
+            })}
           </g>
         )
       })}

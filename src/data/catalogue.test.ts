@@ -1,11 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import { CATALOGUE, OPERATION_META, PSEUDOCODE_LISTINGS } from './catalogue'
 import { buildList } from '../core/model/linkedList'
+import { buildStack } from '../core/model/stack'
 import { buildBst } from '../core/model/bst'
 import { heapFromValues, heapifyInPlace } from '../core/model/binaryHeap'
 import { buildGraphFromLabels } from '../core/model/graph'
 import { insertAtHead } from '../core/operations/list/insertAtHead'
+import { insertAt } from '../core/operations/list/insertAt'
+import { insertAtTail } from '../core/operations/list/insertAtTail'
 import { deleteByValue } from '../core/operations/list/deleteByValue'
+import { reverse } from '../core/operations/list/reverse'
+import { stackPeek } from '../core/operations/stack/peek'
+import { stackPop } from '../core/operations/stack/pop'
+import { stackPush } from '../core/operations/stack/push'
 import { bstDelete } from '../core/operations/bst/delete'
 import { bstInsert } from '../core/operations/bst/insert'
 import { bstInsertAll } from '../core/operations/bst/insertAll'
@@ -61,16 +68,47 @@ const RUNS: { operation: string; allowed: string[]; steps: Step[] }[] = [
     operation: 'insertAtHead',
     allowed: ['insertAtHead'],
     steps: insertAtHead(buildList([50, 30, 70]), { value: 45 }).trace,
-  }, 
-
+  },
   {
-  operation: 'deleteByValue',
-  allowed: ['deleteByValue'],
-  steps: deleteByValue(buildList([50, 30, 70]), { value: 30 }).trace,
+    operation: 'insertAt',
+    allowed: ['insertAt'],
+    steps: insertAt(buildList([50, 30, 70]), {
+      value: 45,
+      position: 1,
+    }).trace,
+  },
+  {
+    operation: 'insertAtTail',
+    allowed: ['insertAtTail'],
+    steps: insertAtTail(buildList([50, 30, 70]), { value: 45 }).trace,
+  },
+  {
+    operation: 'deleteByValue',
+    allowed: ['deleteByValue'],
+    steps: deleteByValue(buildList([50, 30, 70]), { value: 30 }).trace,
+  },
+  {
+    operation: 'reverse',
+    allowed: ['reverse'],
+    steps: reverse(buildList([50, 30, 70])).trace,
   },
 
-
-
+  // ---------------------------------------------------------------- stack
+  {
+    operation: 'stackPush',
+    allowed: ['stackPush'],
+    steps: stackPush(buildStack([50, 30, 70]), { value: 45 }).trace,
+  },
+  {
+    operation: 'stackPop',
+    allowed: ['stackPop'],
+    steps: stackPop(buildStack([50, 30, 70])).trace,
+  },
+  {
+    operation: 'stackPeek',
+    allowed: ['stackPeek'],
+    steps: stackPeek(buildStack([50, 30, 70])).trace,
+  },
 
   {
     operation: 'bstInsertAll',

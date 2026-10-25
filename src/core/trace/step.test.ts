@@ -18,6 +18,7 @@ function sampleStep(): Step {
     operation: 'insertAtHead',
     codeLine: 2,
     narration: 'Create a new node holding 45.',
+    milestone: 'example-boundary',
     highlight: {
       nodes: ['n3', 'n1'],
       active: 'n3',
@@ -42,6 +43,7 @@ describe('the Step contract (frozen v1)', () => {
       'delta',
       'highlight',
       'index',
+      'milestone',
       'narration',
       'operation',
     ])

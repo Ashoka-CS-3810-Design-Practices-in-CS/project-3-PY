@@ -1,4 +1,3 @@
-
 import { describe, expect, it } from 'vitest'
 import { buildList, orderFromHead, valuesInOrder } from '../../model/linkedList'
 import { insertAtTail } from './insertAtTail'
@@ -16,11 +15,14 @@ describe('insertAtTail', () => {
       created: [{ id: 'n4', value: 45 }],
     })
 
-    expect(trace.some((step) =>
-      step.delta.linked?.some(
-        (link) => link.from === 'n3' && link.to === 'n4' && link.kind === 'next',
+    expect(
+      trace.some((step) =>
+        step.delta.linked?.some(
+          (link) =>
+            link.from === 'n3' && link.to === 'n4' && link.kind === 'next',
+        ),
       ),
-    )).toBe(true)
+    ).toBe(true)
 
     expect(valuesInOrder(finalState)).toEqual([50, 30, 70, 45])
     expect(summary.conclusion).toContain('at the tail')
@@ -60,9 +62,7 @@ describe('insertAtTail', () => {
     })
 
     expect(trace[0].delta.linked).toBeUndefined()
-    expect(trace[0].delta.created).toEqual([
-      { id: 'n3', value: 30 },
-    ])
+    expect(trace[0].delta.created).toEqual([{ id: 'n3', value: 30 }])
   })
 
   it('is deterministic', () => {

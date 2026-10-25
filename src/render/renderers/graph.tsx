@@ -28,6 +28,8 @@ import { GRAPH_LAYOUT, type Point } from '../layout/scales'
 export type GraphRendererProps = {
   state: GraphModel
   step: Step | undefined
+  /** The BFS/DFS start vertex, marked above its node for orientation. */
+  sourceId?: string
 }
 
 const NODE_FILL = {
@@ -39,9 +41,9 @@ const NODE_FILL = {
 
 const NODE_INK = {
   undiscovered: 'var(--color-ink)',
-  frontier: 'var(--color-base)',
-  current: 'var(--color-base)',
-  visited: 'var(--color-base)',
+  frontier: 'var(--color-node-ink)',
+  current: 'var(--color-node-ink)',
+  visited: 'var(--color-node-ink)',
 } as const
 
 const EDGE = 'var(--color-subtle)'
@@ -66,9 +68,9 @@ function segment(from: Point, to: Point, radius: number) {
   }
 }
 
-export function GraphRenderer({ state, step }: GraphRendererProps) {
+export function GraphRenderer({ state, step, sourceId }: GraphRendererProps) {
   const radius = GRAPH_LAYOUT.nodeRadius
-  const positions = layoutGraph(state)
+  const positions = layoutGraph(state, sourceId)
   const edges = graphEdges(state)
   const activeId = step?.highlight.active
   const highlighted = step?.highlight.nodes ?? []
@@ -81,6 +83,12 @@ export function GraphRenderer({ state, step }: GraphRendererProps) {
     step?.aux?.kind === 'queue'
       ? (step.aux.values ?? []).map((value) => String(value))
       : []
+  const frontierWord =
+    step?.aux?.kind === 'stack'
+      ? 'on stack'
+      : step?.aux?.kind === 'queue'
+        ? 'queued'
+        : 'frontier'
 
   const kindFor = (id: string): keyof typeof NODE_FILL => {
     if (id === activeId) return 'current'
@@ -93,7 +101,7 @@ export function GraphRenderer({ state, step }: GraphRendererProps) {
   return (
     <svg
       viewBox={`0 0 ${GRAPH_LAYOUT.width} ${GRAPH_LAYOUT.height}`}
-      className="h-auto w-full"
+      className="h-auto w-full max-md:w-[700px] max-md:max-w-none"
       role="img"
       aria-label={`Graph with ${state.vertices.length} vertices and ${edges.length} edges${state.directed ? ' (directed)' : ''}`}
     >
@@ -150,9 +158,31 @@ export function GraphRenderer({ state, step }: GraphRendererProps) {
         const point = positions[vertex.id]
         if (point === undefined) return null
         const kind = kindFor(vertex.id)
+        const stateLabel =
+          kind === 'current'
+            ? 'current'
+            : kind === 'frontier'
+              ? frontierWord
+              : kind === 'visited'
+                ? 'visited'
+                : null
         return (
           <g key={vertex.id} transform={`translate(${point.x} ${point.y})`}>
-            <title>{`${vertex.label} (${vertex.id}) — ${kind}`}</title>
+            <title>{`${vertex.label} — ${kind}`}</title>
+            {vertex.id === sourceId && (
+              <text
+                y={-radius - 10}
+                textAnchor="middle"
+                fontSize="10"
+                fontWeight="700"
+                fill="var(--color-accent)"
+                stroke="var(--color-surface)"
+                strokeWidth="3"
+                paintOrder="stroke"
+              >
+                source
+              </text>
+            )}
             {vertex.id === activeId && (
               <circle
                 r={radius + 5}
@@ -162,10 +192,19 @@ export function GraphRenderer({ state, step }: GraphRendererProps) {
                 strokeDasharray="4 3"
               />
             )}
+            {kind === 'frontier' && (
+              <circle
+                r={radius + 3}
+                fill="none"
+                stroke={NODE_FILL.frontier}
+                strokeWidth={1.5}
+                strokeDasharray="2 3"
+              />
+            )}
             <circle
               r={radius}
               fill={NODE_FILL[kind]}
-              stroke="var(--color-base)"
+              stroke="var(--color-node-stroke)"
               strokeWidth={1.5}
             />
             <text
@@ -177,6 +216,20 @@ export function GraphRenderer({ state, step }: GraphRendererProps) {
             >
               {vertex.label}
             </text>
+            {stateLabel !== null && (
+              <text
+                y={radius + 12}
+                textAnchor="middle"
+                fontSize="9"
+                fontWeight="600"
+                fill="var(--color-ink-dim)"
+                stroke="var(--color-surface)"
+                strokeWidth="3"
+                paintOrder="stroke"
+              >
+                {stateLabel}
+              </text>
+            )}
           </g>
         )
       })}

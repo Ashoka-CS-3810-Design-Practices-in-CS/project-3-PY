@@ -9,7 +9,7 @@
  *   property rather than an assumption.
  *
  * WHY THIS FILE EXISTS
- *   The BST is a graded structure (A2 §4.4) and the shared base for all four tree
+ *   The BST is a catalogue structure (A2 §4.4) and the shared base for all four tree
  *   traversals, so the tree operations, the traversals and the recursion-frame
  *   rendering all read the same model. Two decisions are deliberate here:
  *

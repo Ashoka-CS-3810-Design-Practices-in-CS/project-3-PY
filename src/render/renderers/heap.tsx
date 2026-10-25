@@ -38,8 +38,8 @@ const NODE_FILL = {
 
 const NODE_INK = {
   undiscovered: 'var(--color-ink)',
-  frontier: 'var(--color-base)',
-  current: 'var(--color-base)',
+  frontier: 'var(--color-node-ink)',
+  current: 'var(--color-node-ink)',
 } as const
 
 const EDGE = 'var(--color-subtle)'
@@ -140,7 +140,7 @@ export function HeapRenderer({ state, step }: HeapRendererProps) {
             <circle
               r={radius}
               fill={NODE_FILL[kind]}
-              stroke="var(--color-base)"
+              stroke="var(--color-node-stroke)"
               strokeWidth={1.5}
             />
             <text
@@ -155,6 +155,30 @@ export function HeapRenderer({ state, step }: HeapRendererProps) {
           </g>
         )
       })}
+
+      {/* Build/extract boundary: point at the root and name what it holds. */}
+      {step?.milestone === 'heap-built' && treePoints[0] !== undefined && (
+        <g>
+          <text
+            x={treePoints[0].x}
+            y={Math.max(12, treePoints[0].y - radius - 12)}
+            textAnchor="middle"
+            fontSize="11"
+            fontWeight="700"
+            fill="var(--color-warn)"
+          >
+            root · {state.kind === 'min' ? 'minimum' : 'maximum'}
+          </text>
+          <line
+            x1={treePoints[0].x}
+            y1={Math.max(16, treePoints[0].y - radius - 9)}
+            x2={treePoints[0].x}
+            y2={treePoints[0].y - radius - 2}
+            stroke="var(--color-warn)"
+            strokeWidth="2"
+          />
+        </g>
+      )}
 
       {/* Array separator + label. */}
       <line
@@ -192,7 +216,7 @@ export function HeapRenderer({ state, step }: HeapRendererProps) {
               height={HEAP_LAYOUT.cellHeight}
               rx={5}
               fill={NODE_FILL[kind]}
-              stroke="var(--color-base)"
+              stroke="var(--color-node-stroke)"
               strokeWidth={1}
             />
             <text

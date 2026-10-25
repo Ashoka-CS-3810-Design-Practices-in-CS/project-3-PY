@@ -35,9 +35,10 @@ export function ComplexityPanel({
   return (
     <section
       aria-label="Complexity"
-      className="rounded-xl border border-line bg-surface p-3"
+      data-tour="complexity"
+      className="rounded-lg border border-line bg-surface p-3"
     >
-      <h2 className="mb-2 text-xs font-semibold tracking-wide text-muted uppercase">
+      <h2 className="mb-2 text-[11px] font-semibold tracking-wide text-muted">
         Complexity
       </h2>
 

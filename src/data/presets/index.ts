@@ -4,9 +4,9 @@
  * WHAT GOES HERE
  *   One JSON fixture per teaching case under this directory, imported and typed by
  *   this loader so the rest of the app sees `PresetDataset[]` rather than raw JSON.
- *   Each preset is deliberately at least `MIN_PRESET_VALUES` long: a presentation
- *   dataset has to be big enough that an O(n) walk is visibly a walk, a height-17
- *   chain is visibly degenerate, and a heap has more than one level.
+ *   Each preset is deliberately **capped at `MAX_PRESET_VALUES` entries**: a
+ *   presentation dataset has to be big enough to show a walk or a multi-level
+ *   tree, but small enough that every node, arrow and pointer badge stays readable.
  *
  * WHY THIS FILE EXISTS
  *   AUC (FR4) loads a fixed fixture rather than a randomly generated input, so a
@@ -30,16 +30,18 @@ import graphBfsDfs from './graph-bfs-dfs.json'
 import heapUnsorted from './heap-unsorted.json'
 import heapValid from './heap-valid.json'
 import listBasic from './list-basic.json'
+import stackBasic from './stack-basic.json'
 
 /**
- * The floor every shipped fixture must clear. Referenced by the presets test, so a
- * short preset cannot slip in (the request was "minimum of 15 values for each").
+ * The ceiling every shipped fixture must respect. Referenced by the presets test,
+ * so a preloaded dataset cannot grow past the point where the visualization stops
+ * being readable (the user-facing rule is "cap preloaded values at 10").
  */
-export const MIN_PRESET_VALUES = 15
+export const MAX_PRESET_VALUES = 10
 
 export type ValuePreset = {
   id: string
-  structureId: 'list' | 'bst'
+  structureId: 'list' | 'stack' | 'bst'
   label: string
   description: string
   values: number[]
@@ -79,6 +81,13 @@ export const PRESET_DATASETS: readonly PresetDataset[] = [
     label: listBasic.label,
     description: listBasic.description,
     values: listBasic.values,
+  },
+  {
+    id: stackBasic.id,
+    structureId: 'stack',
+    label: stackBasic.label,
+    description: stackBasic.description,
+    values: stackBasic.values,
   },
   {
     id: bstBalanced.id,

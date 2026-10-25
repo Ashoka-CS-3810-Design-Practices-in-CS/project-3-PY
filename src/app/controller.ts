@@ -65,6 +65,10 @@ export type PlaybackController = {
   stepBack(): void
   restart(): void
   seek(index: number): void
+  /** Current wall-clock milliseconds between steps while playing. */
+  getStepMs(): number
+  /** Change the playback rate; an active PLAYING timer is re-anchored. */
+  setStepMs(stepMs: number): void
 }
 
 export type ControllerOptions = {
@@ -79,7 +83,7 @@ export type ControllerOptions = {
 export function createPlaybackController(
   options: ControllerOptions = {},
 ): PlaybackController {
-  const stepMs = options.stepMs ?? 700
+  let stepMs = options.stepMs ?? 700
   const tickMs = options.tickMs ?? 80
   const now = options.now ?? ((): number => performance.now())
 
@@ -88,6 +92,8 @@ export function createPlaybackController(
   let timer: ReturnType<typeof setInterval> | null = null
   let playStartedAt = 0
   let indexAtPlayStart = 0
+  /** Step indices marked as phase boundaries; playback pauses on them. */
+  let milestones: number[] = []
 
   let snapshot: ControllerSnapshot = {
     phase: 'IDLE',
@@ -120,6 +126,19 @@ export function createPlaybackController(
   const tick = (): void => {
     const advance = Math.floor((now() - playStartedAt) / stepMs)
     const next = clamp(indexAtPlayStart + advance)
+
+    // Stop ON a boundary step instead of stepping over it. This is what gives the
+    // heap build a visible pause before extraction starts. `>` (not `>=`) means
+    // pressing Play again resumes past the boundary rather than re-pausing.
+    const boundary = milestones.find(
+      (milestone) => milestone > snapshot.index && milestone <= next,
+    )
+    if (boundary !== undefined) {
+      stopTimer()
+      publish({ index: boundary, phase: 'PAUSED' })
+      return
+    }
+
     if (next >= lastIndex()) {
       stopTimer()
       publish({ index: next, phase: 'FINISHED' })
@@ -174,6 +193,7 @@ export function createPlaybackController(
 
     load(input) {
       stopTimer()
+      milestones = []
 
       // An unknown structure id is a programming error (the catalogue and the
       // registry are out of step), so it is reported through the error phase
@@ -190,6 +210,10 @@ export function createPlaybackController(
       }
 
       store = createTraceStore<unknown>(input.initial, input.steps, reducer)
+      milestones = input.steps.reduce<number[]>((indices, step, index) => {
+        if (step.milestone !== undefined) indices.push(index)
+        return indices
+      }, [])
       publish({
         phase: 'READY',
         index: 0,
@@ -225,6 +249,22 @@ export function createPlaybackController(
 
     seek(index) {
       moveTo(index)
+    },
+
+    getStepMs() {
+      return stepMs
+    },
+
+    setStepMs(next) {
+      if (!Number.isFinite(next) || next <= 0) return
+      stepMs = next
+      // Re-anchor an active playback so the new rate applies from this moment,
+      // not from the original Play press (A3 control inventory: "the new rate
+      // applies from the next step").
+      if (snapshot.phase === 'PLAYING') {
+        indexAtPlayStart = snapshot.index
+        playStartedAt = now()
+      }
     },
   }
 }

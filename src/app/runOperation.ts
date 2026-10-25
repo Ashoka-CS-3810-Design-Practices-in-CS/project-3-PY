@@ -31,9 +31,14 @@
  */
 
 import { EMPTY_BST } from '../core/model/bst'
-import { heapFromValues, type BinaryHeap } from '../core/model/binaryHeap'
+import {
+  heapFromValues,
+  heapValues,
+  type BinaryHeap,
+} from '../core/model/binaryHeap'
 import { buildGraphFromLabels } from '../core/model/graph'
 import { buildList } from '../core/model/linkedList'
+import { buildStack } from '../core/model/stack'
 import { bstDelete } from '../core/operations/bst/delete'
 import { bstInsert } from '../core/operations/bst/insert'
 import { bstInsertAll } from '../core/operations/bst/insertAll'
@@ -48,9 +53,14 @@ import { heapExtractMax } from '../core/operations/heap/extractMax'
 import { heapExtractMin } from '../core/operations/heap/extractMin'
 import { heapInsert } from '../core/operations/heap/insert'
 import { heapInsertAll } from '../core/operations/heap/insertAll'
+import { insertAt } from '../core/operations/list/insertAt'
 import { insertAtHead } from '../core/operations/list/insertAtHead'
 import { insertAtTail } from '../core/operations/list/insertAtTail'
 import { deleteByValue } from '../core/operations/list/deleteByValue'
+import { reverse } from '../core/operations/list/reverse'
+import { stackPeek } from '../core/operations/stack/peek'
+import { stackPop } from '../core/operations/stack/pop'
+import { stackPush } from '../core/operations/stack/push'
 import { inorder } from '../core/operations/traverse/inorder'
 import { levelOrder } from '../core/operations/traverse/levelOrder'
 import { postorder } from '../core/operations/traverse/postorder'
@@ -64,6 +74,7 @@ import {
   validateGraphEdges,
   validateGraphSource,
   validateHeapValues,
+  validatePosition,
   validateSingleInteger,
   validateValue,
   validateValues,
@@ -83,6 +94,8 @@ export type RunRequest = {
   valuesText?: string
   /** The single insert/search/delete key or heap value, as typed. */
   valueText?: string
+  /** A 0-based linked-list insert position, as typed. */
+  positionText?: string
   /** The graph edge list, one `A-B` per line. */
   edgesText?: string
   /** The BFS/DFS source vertex label. */
@@ -142,6 +155,52 @@ function validateStructureValues(
 type Phase = { trace: readonly Step[]; summary: GenerateSummary }
 
 /**
+ * The pause between "build the heap" and "extract from it".
+ *
+ * Composition alone makes the build's last sift adjacent to the extract's first
+ * read, so the finished heap is never on screen as a stable picture. This step
+ * highlights the root, names it as the min/max, and carries `milestone` so the
+ * controller pauses here and the narration panel renders a phase warning.
+ */
+function heapBuildBoundary(
+  heap: BinaryHeap,
+  operationId: 'heapExtractMin' | 'heapExtractMax',
+): Phase {
+  const root = heap.entries[0]
+  if (root === undefined) {
+    return {
+      trace: [],
+      summary: { steps: 0, comparisons: 0, conclusion: '' },
+    }
+  }
+
+  const label = heap.kind === 'min' ? 'minimum' : 'maximum'
+  const nextLabel = heap.kind === 'min' ? 'next smallest' : 'next largest'
+  const step: Step = {
+    index: 0,
+    operation: operationId,
+    codeLine: 1,
+    narration: `The heap is built and valid. The root at slot 0 is the ${label}, ${String(
+      root.value,
+    )}. Playback paused here: extracting removes this root, promotes the last entry to slot 0, then sifts down so the ${nextLabel} becomes the new root.`,
+    milestone: 'heap-built',
+    highlight: { nodes: [root.id], active: root.id, edges: [] },
+    delta: {},
+    aux: {
+      kind: 'heap',
+      values: heapValues(heap),
+      indices: [0],
+      comparisons: 0,
+    },
+  }
+
+  return {
+    trace: [step],
+    summary: { steps: 1, comparisons: 0, conclusion: '' },
+  }
+}
+
+/**
  * Runs any operation. `structureId`/`operationId` select the phases;
  * `OperationMeta.inputs` decides which fields are validated first, so a missing
  * field is reported as a validation error rather than reaching a generator as
@@ -155,6 +214,7 @@ export function runOperation(request: RunRequest): RunOutcome {
 
   const needsValues = meta.inputs.includes('values')
   const needsValue = meta.inputs.includes('value')
+  const needsPosition = meta.inputs.includes('position')
   const needsEdges = meta.inputs.includes('edges')
   const needsSource = meta.inputs.includes('source')
 
@@ -240,10 +300,10 @@ export function runOperation(request: RunRequest): RunOutcome {
     ? validateStructureValues(request.structureId, request.valuesText ?? '')
     : ({ ok: true, tokens: [], accepted: [] } satisfies ValidationReport)
 
-  // The list slice predates A1's integer rule and accepts a short word as a value
+  // The linear structures (list, stack) accept a short word as a value
   // (`validateValue`); the ordered structures use the integer validator.
   const valueReport = needsValue
-    ? request.structureId === 'list'
+    ? request.structureId === 'list' || request.structureId === 'stack'
       ? validateValue(request.valueText ?? '')
       : validateSingleInteger(
           request.valueText ?? '',
@@ -251,29 +311,52 @@ export function runOperation(request: RunRequest): RunOutcome {
         )
     : ({ ok: true, tokens: [], accepted: [] } satisfies ValidationReport)
 
-  const report = mergeReports([valuesReport, valueReport])
+  const positionReport = needsPosition
+    ? validatePosition(request.positionText ?? '')
+    : ({ ok: true, tokens: [], accepted: [] } satisfies ValidationReport)
+
+  const report = mergeReports([valuesReport, valueReport, positionReport])
   if (!report.ok) return { ok: false, report }
 
   const values = valuesReport.accepted
   const value = valueReport.accepted[0] as StructureValue
+  const position = positionReport.accepted[0] as number
 
-  switch (request.operationId) {    
+  switch (request.operationId) {
     // ------------------------------------------------------------------ list
     case 'insertAtHead': {
       const initial = buildList(values)
       return finish(report, initial, [insertAtHead(initial, { value })])
-    }  
-
+    }
+    case 'insertAt': {
+      const initial = buildList(values)
+      return finish(report, initial, [insertAt(initial, { value, position })])
+    }
     case 'insertAtTail': {
-  const initial = buildList(values)
-  return finish(report, initial, [insertAtTail(initial, { value })])
-   }
-
-
-
+      const initial = buildList(values)
+      return finish(report, initial, [insertAtTail(initial, { value })])
+    }
     case 'deleteByValue': {
       const initial = buildList(values)
       return finish(report, initial, [deleteByValue(initial, { value })])
+    }
+    case 'reverse': {
+      const initial = buildList(values)
+      return finish(report, initial, [reverse(initial)])
+    }
+
+    // ----------------------------------------------------------------- stack
+    case 'stackPush': {
+      const initial = buildStack(values)
+      return finish(report, initial, [stackPush(initial, { value })])
+    }
+    case 'stackPop': {
+      const initial = buildStack(values)
+      return finish(report, initial, [stackPop(initial)])
+    }
+    case 'stackPeek': {
+      const initial = buildStack(values)
+      return finish(report, initial, [stackPeek(initial)])
     }
 
     // ------------------------------------------------------------------- BST
@@ -335,6 +418,7 @@ export function runOperation(request: RunRequest): RunOutcome {
       const build = heapInsertAll(values, 'min')
       return finish(report, heapFromValues([], 'min'), [
         build,
+        heapBuildBoundary(build.finalState, 'heapExtractMin'),
         heapExtractMin(build.finalState),
       ])
     }
@@ -342,6 +426,7 @@ export function runOperation(request: RunRequest): RunOutcome {
       const build = heapInsertAll(values, 'max')
       return finish(report, heapFromValues([], 'max'), [
         build,
+        heapBuildBoundary(build.finalState, 'heapExtractMax'),
         heapExtractMax(build.finalState),
       ])
     }

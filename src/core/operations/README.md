@@ -14,8 +14,8 @@ Subdirectories follow A2 `Listing 18`:
 
 | Folder | Operations |
 | --- | --- |
-| `list/` | `insertAtHead` · `insertAt` · `deleteByValue` · `reverse` |
-| `stack/` | `push` · `pop` |
+| `list/` | `insertAtHead` · `insertAt` · `insertAtTail` · `deleteByValue` · `reverse` |
+| `stack/` | `stackPush` · `stackPop` · `stackPeek` |
 | `heap/` | `insert` · `extractMin` · `buildHeap` |
 | `bst/` | `insert` · `delete` · `search` |
 | `traverse/` | `preorder` · `inorder` · `postorder` · `levelOrder` |

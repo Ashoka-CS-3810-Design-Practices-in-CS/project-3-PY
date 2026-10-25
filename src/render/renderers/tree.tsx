@@ -42,9 +42,9 @@ const NODE_FILL = {
 
 const NODE_INK = {
   undiscovered: 'var(--color-ink)',
-  frontier: 'var(--color-base)',
-  current: 'var(--color-base)',
-  visited: 'var(--color-base)',
+  frontier: 'var(--color-node-ink)',
+  current: 'var(--color-node-ink)',
+  visited: 'var(--color-node-ink)',
 } as const
 
 const EDGE = 'var(--color-subtle)'
@@ -133,7 +133,7 @@ export function TreeRenderer({ state, step }: TreeRendererProps) {
             <circle
               r={radius}
               fill={NODE_FILL[kind]}
-              stroke="var(--color-base)"
+              stroke="var(--color-node-stroke)"
               strokeWidth={1.5}
             />
             <text

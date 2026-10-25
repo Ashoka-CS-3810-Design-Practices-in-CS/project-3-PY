@@ -30,10 +30,11 @@ import { applyBstDelta, type BinarySearchTree } from '../core/model/bst'
 import { applyGraphDelta, type GraphModel } from '../core/model/graph'
 import { applyHeapDelta, type BinaryHeap } from '../core/model/binaryHeap'
 import { applyListDelta, type LinkedListModel } from '../core/model/linkedList'
+import { applyStackDelta, type StackModel } from '../core/model/stack'
 import type { StructureDelta } from '../core/trace/step'
 
 /** Every structure the catalogue can offer. The order is the sidebar order. */
-export const STRUCTURE_IDS = ['list', 'heap', 'bst', 'graph'] as const
+export const STRUCTURE_IDS = ['list', 'stack', 'heap', 'bst', 'graph'] as const
 
 export type StructureId = (typeof STRUCTURE_IDS)[number]
 
@@ -48,6 +49,7 @@ export function isStructureId(value: string): value is StructureId {
  */
 export type StructureState =
   | { structureId: 'list'; model: LinkedListModel }
+  | { structureId: 'stack'; model: StackModel }
   | { structureId: 'heap'; model: BinaryHeap }
   | { structureId: 'bst'; model: BinarySearchTree }
   | { structureId: 'graph'; model: GraphModel }
@@ -65,6 +67,7 @@ export type AnyStructureReducer = (
  */
 const REDUCERS: Record<StructureId, AnyStructureReducer> = {
   list: (state, delta) => applyListDelta(state as LinkedListModel, delta),
+  stack: (state, delta) => applyStackDelta(state as StackModel, delta),
   heap: (state, delta) => applyHeapDelta(state as BinaryHeap, delta),
   bst: (state, delta) => applyBstDelta(state as BinarySearchTree, delta),
   graph: (state, delta) => applyGraphDelta(state as GraphModel, delta),
@@ -83,6 +86,8 @@ export function wrapState(structureId: string, model: unknown): StructureState {
   switch (structureId) {
     case 'list':
       return { structureId: 'list', model: model as LinkedListModel }
+    case 'stack':
+      return { structureId: 'stack', model: model as StackModel }
     case 'heap':
       return { structureId: 'heap', model: model as BinaryHeap }
     case 'bst':

@@ -4,6 +4,7 @@ import { heapIsValid, heapValues } from '../core/model/binaryHeap'
 import type { BinarySearchTree } from '../core/model/bst'
 import { valuesInOrder } from '../core/model/bst'
 import { graphEdges, type GraphModel } from '../core/model/graph'
+import type { Step } from '../core/trace/step'
 import { createTraceStore } from '../core/trace/store'
 import {
   getPreset,
@@ -196,6 +197,17 @@ describe('runOperation — the generic request pipeline', () => {
     expect(
       outcome.input.steps.some((step) => step.operation === 'heapExtractMin'),
     ).toBe(true)
+    const boundary = outcome.input.steps.find(
+      (step) => step.milestone === 'heap-built',
+    )
+    expect(boundary?.operation).toBe('heapExtractMin')
+    expect(boundary?.narration).toContain('root at slot 0 is the minimum')
+    expect(boundary?.highlight.active).toBeDefined()
+    const boundaryIndex = outcome.input.steps.indexOf(boundary as Step)
+    expect(outcome.input.steps[boundaryIndex - 1].operation).toBe('heapInsert')
+    expect(outcome.input.steps[boundaryIndex + 1].operation).toBe(
+      'heapExtractMin',
+    )
     const final = finalModel(outcome.input) as BinaryHeap
     expect(heapValues(final)).toHaveLength(3)
   })
@@ -222,8 +234,8 @@ describe('runOperation — the generic request pipeline', () => {
     // Visualise loads the complete graph; the trace contains only the traversal,
     // so the first step already has the whole drawing behind it.
     const initial = breadth.input.initial as GraphModel
-    expect(initial.vertices).toHaveLength(16)
-    expect(graphEdges(initial)).toHaveLength(20)
+    expect(initial.vertices).toHaveLength(10)
+    expect(graphEdges(initial)).toHaveLength(10)
     expect(
       breadth.input.steps.some((step) => step.operation === 'graphBuild'),
     ).toBe(false)
@@ -233,9 +245,9 @@ describe('runOperation — the generic request pipeline', () => {
     )
     // A real traversal, not the "source is not a vertex" degenerate trace: the
     // typed label A must resolve to the model id used by the adjacency list.
-    expect(breadth.input.steps.length).toBeGreaterThan(16)
+    expect(breadth.input.steps.length).toBeGreaterThan(10)
     expect(breadth.input.steps[0].narration).not.toContain('not a vertex')
-    expect(graphEdges(finalModel(breadth.input) as GraphModel)).toHaveLength(20)
+    expect(graphEdges(finalModel(breadth.input) as GraphModel)).toHaveLength(10)
 
     // The same source, two different orders — the whole point of the lesson.
     expect(breadth.input.steps).not.toEqual(depth.input.steps)
@@ -254,7 +266,7 @@ describe('runOperation — the generic request pipeline', () => {
     expect(
       outcome.input.steps.every((step) => step.operation === 'graphBuild'),
     ).toBe(true)
-    expect(graphEdges(finalModel(outcome.input) as GraphModel)).toHaveLength(20)
+    expect(graphEdges(finalModel(outcome.input) as GraphModel)).toHaveLength(10)
   })
 
   it('reports an unknown source vertex as a validation failure (ER9)', () => {

@@ -31,6 +31,23 @@ export const LIST_LAYOUT = {
 } as const
 
 /**
+ * Stack geometry. The renderer scales the cell height to fit the current entry
+ * count inside `height`, so a 10-value preset and a 2-value demo both fit without
+ * scrolling. Cells grow upward from `baseY`; `topY` is the smallest allowed top.
+ */
+export const STACK_LAYOUT = {
+  width: 760,
+  height: 430,
+  baseY: 400,
+  topY: 28,
+  cellWidth: 210,
+  maxCellHeight: 52,
+  minCellHeight: 16,
+  gap: 6,
+  markerGap: 26,
+} as const
+
+/**
  * Tree geometry constants. Shared by the BST renderer and the heap's tree
  * projection, so a node radius doesn't differ between two views of a tree.
  */

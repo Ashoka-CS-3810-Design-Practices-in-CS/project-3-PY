@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { heapValues } from '../core/model/binaryHeap'
+import { buildList } from '../core/model/linkedList'
+import type { Step } from '../core/trace/step'
 import { getPreset, presetValuesToText } from '../data/presets'
 import { createPlaybackController } from './controller'
 import { isStructureId, reducerFor, STRUCTURE_IDS, wrapState } from './reducers'
@@ -13,6 +15,19 @@ function heapPresetValues(): string {
     throw new Error('heap preset missing')
   }
   return presetValuesToText(preset)
+}
+
+/** A minimal list step; `milestone` marks a phase boundary for the player. */
+function listStep(index: number, milestone?: string): Step {
+  return {
+    index,
+    operation: 'insertAtHead',
+    codeLine: 2,
+    narration: `step ${index}`,
+    ...(milestone === undefined ? {} : { milestone }),
+    highlight: { nodes: [], edges: [] },
+    delta: {},
+  }
 }
 
 describe('structure registry', () => {
@@ -42,6 +57,90 @@ describe('PlaybackController — structure-agnostic replay', () => {
     const controller = createPlaybackController()
     expect(controller.getState()).toBeNull()
     expect(controller.getSnapshot().phase).toBe('IDLE')
+  })
+
+  it('pauses ON a milestone, then resumes from it', () => {
+    vi.useFakeTimers()
+    try {
+      let clock = 0
+      const controller = createPlaybackController({
+        stepMs: 100,
+        tickMs: 10,
+        now: () => clock,
+      })
+      controller.load({
+        initial: buildList([]),
+        steps: [
+          listStep(0),
+          listStep(1),
+          listStep(2, 'heap-built'),
+          listStep(3),
+        ],
+        summary: { steps: 4, comparisons: 0, conclusion: '' },
+        structureId: 'list',
+        operationId: 'insertAtHead',
+      })
+
+      controller.play()
+      clock = 100
+      vi.advanceTimersByTime(10)
+      expect(controller.getSnapshot().index).toBe(1)
+
+      clock = 200
+      vi.advanceTimersByTime(10)
+      // The clock wants index 2; the player must stop exactly there, not run on.
+      expect(controller.getSnapshot()).toMatchObject({
+        index: 2,
+        phase: 'PAUSED',
+      })
+
+      // Pressing Play again resumes past the boundary.
+      controller.play()
+      clock = 300
+      vi.advanceTimersByTime(10)
+      expect(controller.getSnapshot()).toMatchObject({
+        index: 3,
+        phase: 'FINISHED',
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('applies a new speed from the current step while playing', () => {
+    vi.useFakeTimers()
+    try {
+      let clock = 0
+      const controller = createPlaybackController({
+        stepMs: 100,
+        tickMs: 10,
+        now: () => clock,
+      })
+      controller.load({
+        initial: buildList([]),
+        steps: [listStep(0), listStep(1), listStep(2), listStep(3)],
+        summary: { steps: 4, comparisons: 0, conclusion: '' },
+        structureId: 'list',
+        operationId: 'insertAtHead',
+      })
+
+      expect(controller.getStepMs()).toBe(100)
+      controller.play()
+      clock = 100
+      vi.advanceTimersByTime(10)
+      expect(controller.getSnapshot().index).toBe(1)
+
+      controller.setStepMs(50)
+      expect(controller.getStepMs()).toBe(50)
+      clock = 150
+      vi.advanceTimersByTime(10)
+      expect(controller.getSnapshot().index).toBe(2)
+
+      controller.setStepMs(0)
+      expect(controller.getStepMs()).toBe(50)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('replays a heap trace and tags the reconstructed state', () => {

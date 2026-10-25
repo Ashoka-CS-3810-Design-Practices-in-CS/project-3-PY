@@ -141,7 +141,7 @@ export function layoutHeapTree(size: number): HeapTreeLayout {
   const levels = Math.floor(Math.log2(size)) + 1
   const deepestSlots = 2 ** (levels - 1)
 
-  // Keep the default width for the shipped 16-value presets. Only very wide
+  // Keep the default width for the shipped 10-value presets. Only very wide
   // levels widen the canvas, so ordinary insertions never resize the picture.
   const width = Math.max(
     HEAP_LAYOUT.width,
